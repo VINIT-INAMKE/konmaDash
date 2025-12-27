@@ -1,0 +1,592 @@
+{
+  "info": {
+    "name": "QSR Inventory & Sales Management API",
+    "description": "Complete API collection for testing the QSR inventory management system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "rawIngredientId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "semiProcessedItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "semiProcessedRecipeId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "skuItemId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "transferId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Raw Ingredients",
+          "item": [
+            {
+              "name": "Create Chicken",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('rawIngredientId', response.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Chicken\",\n  \"unit\": \"kg\",\n  \"currentStock\": 10,\n  \"reorderLevel\": 3,\n  \"canReplenish\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/raw-ingredients",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "raw-ingredients"]
+                }
+              }
+            },
+            {
+              "name": "Create Butter Masala Base",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Butter Masala Base\",\n  \"unit\": \"g\",\n  \"currentStock\": 5000,\n  \"reorderLevel\": 1000,\n  \"canReplenish\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/raw-ingredients",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "raw-ingredients"]
+                }
+              }
+            },
+            {
+              "name": "Get All Raw Ingredients",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/raw-ingredients",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "raw-ingredients"]
+                }
+              }
+            },
+            {
+              "name": "Update Raw Ingredient Stock",
+              "request": {
+                "method": "PUT",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"currentStock\": 15\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/raw-ingredients/{{rawIngredientId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "raw-ingredients", "{{rawIngredientId}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Semi-Processed Items",
+          "item": [
+            {
+              "name": "Create Danish Pastry",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('semiProcessedItemId', response.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Danish Pastry 45g\",\n  \"type\": \"fixed\",\n  \"unit\": \"nos\",\n  \"currentStock\": 16\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/semi-processed-items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "semi-processed-items"]
+                }
+              }
+            },
+            {
+              "name": "Create Grated Cheese",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Grated Cheese\",\n  \"type\": \"fixed\",\n  \"unit\": \"g\",\n  \"currentStock\": 2700\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/semi-processed-items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "semi-processed-items"]
+                }
+              }
+            },
+            {
+              "name": "Get All Semi-Processed Items",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/semi-processed-items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "semi-processed-items"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Semi-Processed Recipes",
+          "item": [
+            {
+              "name": "Create Butter Chicken Recipe",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('semiProcessedRecipeId', response.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"outputName\": \"Butter Chicken Gravy\",\n  \"outputQuantity\": 1000,\n  \"outputUnit\": \"ml\",\n  \"ingredients\": [\n    {\n      \"rawIngredientId\": \"{{rawIngredientId}}\",\n      \"rawIngredientName\": \"Chicken\",\n      \"quantity\": 0.5,\n      \"unit\": \"kg\"\n    }\n  ],\n  \"instructions\": \"Cook chicken tikka, prepare butter masala gravy, combine\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/semi-processed-recipes",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "semi-processed-recipes"]
+                },
+                "description": "Note: Replace rawIngredientId with actual ID from Get All Raw Ingredients"
+              }
+            },
+            {
+              "name": "Get All Semi-Processed Recipes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/semi-processed-recipes",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "semi-processed-recipes"]
+                }
+              }
+            },
+            {
+              "name": "Get Single Recipe",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/semi-processed-recipes/{{semiProcessedRecipeId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "semi-processed-recipes", "{{semiProcessedRecipeId}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "SKU Items",
+          "item": [
+            {
+              "name": "Create Butter Chicken Danish SKU",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "if (pm.response.code === 201) {",
+                      "    const response = pm.response.json();",
+                      "    pm.collectionVariables.set('skuItemId', response.data._id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Butter Chicken Danish\",\n  \"targetSkus\": 15,\n  \"currentStallStock\": 0,\n  \"lowStockThreshold\": 5,\n  \"price\": 150,\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/sku-items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "sku-items"]
+                }
+              }
+            },
+            {
+              "name": "Get All SKU Items",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/sku-items",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "sku-items"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "SKU Recipes",
+          "item": [
+            {
+              "name": "Create Butter Chicken Danish Recipe",
+              "request": {
+                "method": "POST",
+                "header": [{"key": "Content-Type", "value": "application/json"}],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"skuId\": \"{{skuItemId}}\",\n  \"skuName\": \"Butter Chicken Danish\",\n  \"ingredients\": [\n    {\n      \"semiProcessedId\": \"{{semiProcessedItemId}}\",\n      \"semiProcessedName\": \"Danish Pastry 45g\",\n      \"quantity\": 1,\n      \"unit\": \"nos\"\n    }\n  ]\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/sku-recipes",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "sku-recipes"]
+                },
+                "description": "Note: Add Butter Chicken Gravy and Grated Cheese to ingredients array with proper IDs"
+              }
+            },
+            {
+              "name": "Get All SKU Recipes",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/sku-recipes",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "sku-recipes"]
+                }
+              }
+            },
+            {
+              "name": "Get SKU Recipe by SKU ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/sku-recipes/by-sku/{{skuItemId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "sku-recipes", "by-sku", "{{skuItemId}}"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Kitchen",
+      "item": [
+        {
+          "name": "Cook Batch - Butter Chicken",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipeId\": \"{{semiProcessedRecipeId}}\",\n  \"multiplier\": 2,\n  \"createdBy\": \"Chef Ram\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/kitchen/batch-cook",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kitchen", "batch-cook"]
+            },
+            "description": "Cook 2x the recipe (2000ml of Butter Chicken)"
+          }
+        },
+        {
+          "name": "Get Batch Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kitchen/batch-logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kitchen", "batch-logs"]
+            }
+          }
+        },
+        {
+          "name": "Get Semi-Processed Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kitchen/semi-processed",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kitchen", "semi-processed"]
+            }
+          }
+        },
+        {
+          "name": "Check Availability for Transfer",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kitchen/check-availability?skuId={{skuItemId}}&quantity=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kitchen", "check-availability"],
+              "query": [
+                {"key": "skuId", "value": "{{skuItemId}}"},
+                {"key": "quantity", "value": "10"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Transfer to Stall",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('transferId', response.transfer._id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skuId\": \"{{skuItemId}}\",\n  \"quantity\": 10,\n  \"sentBy\": \"Kitchen Staff\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/kitchen/transfer",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kitchen", "transfer"]
+            }
+          }
+        },
+        {
+          "name": "Get All Transfers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kitchen/transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kitchen", "transfers"]
+            }
+          }
+        },
+        {
+          "name": "Get Sent Transfers Only",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/kitchen/transfers?status=sent",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "kitchen", "transfers"],
+              "query": [{"key": "status", "value": "sent"}]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stall",
+      "item": [
+        {
+          "name": "Get Pending Transfers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stall/pending-transfers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stall", "pending-transfers"]
+            }
+          }
+        },
+        {
+          "name": "Receive Transfer",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receivedBy\": \"Stall Manager\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/stall/receive-transfer/{{transferId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stall", "receive-transfer", "{{transferId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Stall Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stall/inventory",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stall", "inventory"]
+            }
+          }
+        },
+        {
+          "name": "Record Sale",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"skuId\": \"{{skuItemId}}\",\n  \"quantity\": 2,\n  \"soldBy\": \"Cashier 1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/stall/sale",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stall", "sale"]
+            }
+          }
+        },
+        {
+          "name": "Get Sales History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stall/sales",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stall", "sales"]
+            }
+          }
+        },
+        {
+          "name": "Get Sales Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stall/sales-summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stall", "sales-summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Alerts",
+      "item": [
+        {
+          "name": "Get All Alerts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/alerts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "alerts"]
+            }
+          }
+        },
+        {
+          "name": "Get Low Stock SKUs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/alerts/low-stock",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "alerts", "low-stock"]
+            }
+          }
+        },
+        {
+          "name": "Get Low Raw Ingredients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/alerts/low-raw",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "alerts", "low-raw"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
