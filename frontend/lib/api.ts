@@ -1,21 +1,48 @@
 // API Client for QSR Inventory Management System
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
+// Get auth token from localStorage
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth_token');
+}
+
 // Generic API request handler
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<{ success: boolean; data?: T; error?: string }> {
   try {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(options.headers as Record<string, string>),
+    };
+
+    // Add Authorization header if token exists
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers,
       ...options,
     });
 
     const data = await response.json();
+
+    // Handle 401 Unauthorized - redirect to login
+    if (response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('auth_user');
+        window.location.href = '/login';
+      }
+      return {
+        success: false,
+        error: 'Authentication required',
+      };
+    }
 
     if (!response.ok) {
       return {
@@ -132,7 +159,7 @@ export const skuRecipesApi = {
 
 export const kitchenApi = {
   // Batch Cooking
-  cookBatch: (data: { recipeId: string; multiplier: number; createdBy: string }) =>
+  cookBatch: (data: { recipeId: string; multiplier: number }) =>
     apiRequest('/api/kitchen/batch-cook', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -143,7 +170,7 @@ export const kitchenApi = {
   getSemiProcessedInventory: () => apiRequest('/api/kitchen/semi-processed'),
 
   // Transfers (Send to Counter - SINGLE ACTION)
-  sendToCounter: (data: { skuId: string; quantity: number; sentBy: string }) =>
+  sendToCounter: (data: { skuId: string; quantity: number }) =>
     apiRequest('/api/kitchen/transfer', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -171,10 +198,10 @@ export const stallApi = {
   recordSale: (data: {
     skuId: string;
     quantity: number;
-    soldBy: string;
     customerName?: string;
     customerPhone?: string;
     paymentMethod?: string;
+    transactionId?: string;
   }) =>
     apiRequest('/api/stall/sale', {
       method: 'POST',
@@ -218,4 +245,38 @@ export const logsApi = {
     const queryString = queryParams.toString();
     return apiRequest(`/api/logs${queryString ? `?${queryString}` : ''}`);
   },
+};
+
+// ============================================================================
+// AUTHENTICATION
+// ============================================================================
+
+export const authApi = {
+  login: (data: { username: string; password: string }) =>
+    apiRequest('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  verify: () => apiRequest('/api/auth/verify', { method: 'POST' }),
+  logout: () => apiRequest('/api/auth/logout', { method: 'POST' }),
+};
+
+// ============================================================================
+// USER MANAGEMENT (Admin Only)
+// ============================================================================
+
+export const usersApi = {
+  getAll: () => apiRequest('/api/users'),
+  create: (data: any) =>
+    apiRequest('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) =>
+    apiRequest(`/api/users/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiRequest(`/api/users/${id}`, { method: 'DELETE' }),
 };

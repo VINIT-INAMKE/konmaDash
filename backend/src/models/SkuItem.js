@@ -29,6 +29,10 @@ const skuItemSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  imageUrl: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

@@ -27,6 +27,10 @@ const rawIngredientSchema = new mongoose.Schema({
     required: true,
     default: true
   },
+  imageUrl: {
+    type: String,
+    default: ''
+  },
   updatedAt: {
     type: Date,
     default: Date.now

@@ -1,10 +1,17 @@
 'use client';
 
 import { SemiProcessedItem } from '@/types';
-import { DataTable, Column } from '../DataTable';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface SemiProcessedItemListProps {
   items: SemiProcessedItem[];
@@ -19,92 +26,98 @@ export function SemiProcessedItemList({
   onEdit,
   onDelete,
 }: SemiProcessedItemListProps) {
-  const columns: Column<SemiProcessedItem>[] = [
-    {
-      header: 'Name',
-      accessor: 'name',
-    },
-    {
-      header: 'Type',
-      accessor: 'type',
-      cell: (value) => (
-        <Badge variant={value === 'batch' ? 'default' : 'secondary'}>
-          {value === 'batch' ? 'Batch' : 'Fixed'}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Current Stock',
-      accessor: 'currentStock',
-      cell: (_, row) => (
-        <span className="font-medium">
-          {row.currentStock} {row.unit}
-        </span>
-      ),
-    },
-    {
-      header: 'Batches',
-      accessor: 'batches',
-      cell: (batches: Array<{ batchId: string; quantity: number; createdAt: string }> | undefined) => {
-        if (!batches || batches.length === 0) {
-          return <span className="text-gray-400">-</span>;
-        }
-        return (
-          <div className="flex flex-col gap-1">
-            {batches.map((batch, idx) => (
-              <div key={batch.batchId || idx} className="text-sm">
-                <Badge variant="outline" className="text-xs">
-                  {batch.quantity}
-                </Badge>
-                <span className="text-gray-500 ml-2">
-                  {new Date(batch.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      header: 'Last Updated',
-      accessor: 'updatedAt',
-      cell: (value) => new Date(value).toLocaleString(),
-    },
-    {
-      header: 'Actions',
-      accessor: '_id',
-      cell: (_, row) => (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onEdit(row)}
-            className="h-8"
-          >
-            <Edit className="w-4 h-4 mr-1" />
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => {
-              if (
-                confirm(
-                  `Are you sure you want to delete "${row.name}"? This action cannot be undone.`
-                )
-              ) {
-                onDelete(row._id);
-              }
-            }}
-            className="h-8"
-          >
-            <Trash2 className="w-4 h-4 mr-1" />
-            Delete
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
-  return <DataTable data={items} columns={columns} loading={loading} />;
+  if (items.length === 0) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        No semi-processed items found. Add your first item to get started.
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead>Current Stock</TableHead>
+          <TableHead>Batches</TableHead>
+          <TableHead>Last Updated</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => (
+          <TableRow key={item._id}>
+            <TableCell className="font-medium">{item.name}</TableCell>
+            <TableCell>
+              <Badge variant={item.type === 'batch' ? 'default' : 'secondary'}>
+                {item.type === 'batch' ? 'Batch' : 'Fixed'}
+              </Badge>
+            </TableCell>
+            <TableCell className="font-medium">
+              {item.currentStock} {item.unit}
+            </TableCell>
+            <TableCell>
+              {!item.batches || item.batches.length === 0 ? (
+                <span className="text-muted-foreground">-</span>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {item.batches.map((batch, idx) => (
+                    <div key={batch.batchId || idx} className="text-sm">
+                      <Badge variant="outline" className="text-xs">
+                        {batch.quantity}
+                      </Badge>
+                      <span className="text-muted-foreground ml-2">
+                        {new Date(batch.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </TableCell>
+            <TableCell className="text-sm text-muted-foreground">
+              {item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '-'}
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex gap-2 justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onEdit(item)}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Are you sure you want to delete "${item.name}"? This action cannot be undone.`
+                      )
+                    ) {
+                      onDelete(item._id);
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 }

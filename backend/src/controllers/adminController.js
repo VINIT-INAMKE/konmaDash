@@ -23,7 +23,7 @@ export const createRawIngredient = async (req, res) => {
         currentStock: ingredient.currentStock,
         reorderLevel: ingredient.reorderLevel
       },
-      'Admin'
+      req.user.username
     );
 
     res.status(201).json({ success: true, data: ingredient });
@@ -63,6 +63,21 @@ export const deleteRawIngredient = async (req, res) => {
     if (!ingredient) {
       return res.status(404).json({ success: false, error: 'Ingredient not found' });
     }
+
+    // Log activity
+    await logActivity(
+      'RAW_INGREDIENT_DELETED',
+      'RAW_INGREDIENT',
+      `Deleted raw ingredient: ${ingredient.name}`,
+      {
+        ingredientId: ingredient._id,
+        name: ingredient.name,
+        unit: ingredient.unit,
+        previousStock: ingredient.currentStock
+      },
+      req.user.username
+    );
+
     res.json({ success: true, data: {} });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -87,7 +102,7 @@ export const createSemiProcessedItem = async (req, res) => {
         unit: item.unit,
         currentStock: item.currentStock
       },
-      'Admin'
+      req.user.username
     );
 
     res.status(201).json({ success: true, data: item });
@@ -121,6 +136,34 @@ export const updateSemiProcessedItem = async (req, res) => {
   }
 };
 
+export const deleteSemiProcessedItem = async (req, res) => {
+  try {
+    const item = await SemiProcessedItem.findByIdAndDelete(req.params.id);
+    if (!item) {
+      return res.status(404).json({ success: false, error: 'Item not found' });
+    }
+
+    // Log activity
+    await logActivity(
+      'SEMI_PROCESSED_DELETED',
+      'SEMI_PROCESSED',
+      `Deleted semi-processed item: ${item.name}`,
+      {
+        itemId: item._id,
+        name: item.name,
+        type: item.type,
+        unit: item.unit,
+        previousStock: item.currentStock
+      },
+      req.user.username
+    );
+
+    res.json({ success: true, data: {} });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
 // Semi-Processed Recipes
 export const createSemiProcessedRecipe = async (req, res) => {
   try {
@@ -139,7 +182,7 @@ export const createSemiProcessedRecipe = async (req, res) => {
         outputUnit: recipe.outputUnit,
         ingredientsCount: recipe.ingredients.length
       },
-      'Admin'
+      req.user.username
     );
 
     res.status(201).json({ success: true, data: recipe });
@@ -194,6 +237,22 @@ export const deleteSemiProcessedRecipe = async (req, res) => {
     if (!recipe) {
       return res.status(404).json({ success: false, error: 'Recipe not found' });
     }
+
+    // Log activity
+    await logActivity(
+      'SEMI_RECIPE_DELETED',
+      'RECIPE',
+      `Deleted semi-processed recipe: ${recipe.outputName}`,
+      {
+        recipeId: recipe._id,
+        outputName: recipe.outputName,
+        outputQuantity: recipe.outputQuantity,
+        outputUnit: recipe.outputUnit,
+        ingredientsCount: recipe.ingredients.length
+      },
+      req.user.username
+    );
+
     res.json({ success: true, data: {} });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -218,7 +277,7 @@ export const createSkuItem = async (req, res) => {
         targetSkus: sku.targetSkus,
         lowStockThreshold: sku.lowStockThreshold
       },
-      'Admin'
+      req.user.username
     );
 
     res.status(201).json({ success: true, data: sku });
@@ -270,6 +329,22 @@ export const deleteSkuItem = async (req, res) => {
     if (!sku) {
       return res.status(404).json({ success: false, error: 'SKU not found' });
     }
+
+    // Log activity
+    await logActivity(
+      'SKU_DELETED',
+      'SKU',
+      `Deleted SKU item: ${sku.name}`,
+      {
+        skuId: sku._id,
+        name: sku.name,
+        price: sku.price,
+        previousStock: sku.currentStallStock,
+        targetSkus: sku.targetSkus
+      },
+      req.user.username
+    );
+
     res.json({ success: true, data: {} });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
@@ -293,7 +368,7 @@ export const createSkuRecipe = async (req, res) => {
         skuName: recipe.skuName,
         ingredientsCount: recipe.ingredients.length
       },
-      'Admin'
+      req.user.username
     );
 
     res.status(201).json({ success: true, data: recipe });
@@ -349,6 +424,21 @@ export const deleteSkuRecipe = async (req, res) => {
     if (!recipe) {
       return res.status(404).json({ success: false, error: 'SKU recipe not found' });
     }
+
+    // Log activity
+    await logActivity(
+      'SKU_RECIPE_DELETED',
+      'RECIPE',
+      `Deleted SKU recipe for: ${recipe.skuName}`,
+      {
+        recipeId: recipe._id,
+        skuId: recipe.skuId,
+        skuName: recipe.skuName,
+        ingredientsCount: recipe.ingredients.length
+      },
+      req.user.username
+    );
+
     res.json({ success: true, data: {} });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });

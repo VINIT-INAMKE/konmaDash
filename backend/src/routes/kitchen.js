@@ -7,8 +7,12 @@ import {
   getTransfers,
   checkAvailability
 } from '../controllers/kitchenController.js';
+import { authenticate, requireKitchen } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Protect all kitchen routes - require authentication and kitchen or admin role
+router.use(authenticate, requireKitchen);
 
 // Batch cooking
 router.post('/batch-cook', createBatch);

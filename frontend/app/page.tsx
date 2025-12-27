@@ -8,11 +8,17 @@ import {
   Settings,
   Store,
 } from 'lucide-react';
+import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-12">
+        {/* Theme Toggle - Top Right */}
+        <div className="fixed top-4 right-4 z-50">
+          <AnimatedThemeToggler className="w-10 h-10 rounded-full bg-card border border-border shadow-lg flex items-center justify-center hover:bg-accent transition-colors" />
+        </div>
+
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-foreground mb-2">

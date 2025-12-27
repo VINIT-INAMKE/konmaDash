@@ -38,6 +38,10 @@ const semiProcessedItemSchema = new mongoose.Schema({
       default: Date.now
     }
   }],
+  imageUrl: {
+    type: String,
+    default: ''
+  },
   updatedAt: {
     type: Date,
     default: Date.now

@@ -7,6 +7,7 @@ export interface RawIngredient {
   currentStock: number;
   reorderLevel: number;
   canReplenish: boolean;
+  imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -22,6 +23,7 @@ export interface SemiProcessedItem {
     quantity: number;
     createdAt: string;
   }>;
+  imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -50,6 +52,7 @@ export interface SkuItem {
   lowStockThreshold: number;
   price: number;
   isActive: boolean;
+  imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -115,6 +118,7 @@ export interface SalesLog {
   customerName?: string;
   customerPhone?: string;
   paymentMethod?: 'cash' | 'upi' | 'card' | 'other';
+  transactionId?: string;
   createdAt: string;
 }
 

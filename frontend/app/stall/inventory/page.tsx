@@ -5,7 +5,14 @@ import { SkuItem } from '@/types';
 import { stallApi } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DataTable, Column } from '@/components/DataTable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Package, AlertTriangle } from 'lucide-react';
 
 export default function StallInventoryPage() {
@@ -28,57 +35,6 @@ export default function StallInventoryPage() {
   const lowStockCount = items.filter(
     (item) => item.currentStallStock <= item.lowStockThreshold
   ).length;
-
-  const columns: Column<SkuItem>[] = [
-    {
-      header: 'SKU Name',
-      accessor: 'name',
-      cell: (value) => <span className="font-medium">{value}</span>,
-    },
-    {
-      header: 'Counter Stock',
-      accessor: 'currentStallStock',
-      cell: (_, row) => {
-        const isLow = row.currentStallStock <= row.lowStockThreshold;
-        return (
-          <div className="flex items-center gap-2">
-            {isLow && <AlertTriangle className="w-4 h-4 text-destructive" />}
-            <span className={`font-semibold text-lg ${isLow ? 'text-destructive' : 'text-foreground'}`}>
-              {row.currentStallStock}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      header: 'Target',
-      accessor: 'targetSkus',
-      cell: (value) => <span className="text-muted-foreground">{value}</span>,
-    },
-    {
-      header: 'Low Stock Alert',
-      accessor: 'lowStockThreshold',
-      cell: (value) => (
-        <Badge variant="outline" className="text-xs">
-          ≤ {value}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Price',
-      accessor: 'price',
-      cell: (value) => <span className="font-medium">₹{value}</span>,
-    },
-    {
-      header: 'Status',
-      accessor: 'isActive',
-      cell: (value) => (
-        <Badge variant={value ? 'default' : 'secondary'}>
-          {value ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-  ];
 
   return (
     <div>
@@ -129,7 +85,62 @@ export default function StallInventoryPage() {
           </div>
 
           {/* Inventory Table */}
-          <DataTable data={items} columns={columns} loading={loading} />
+          {loading ? (
+            <div className="w-full p-8 text-center text-muted-foreground">
+              Loading inventory...
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SKU Name</TableHead>
+                    <TableHead>Counter Stock</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Low Stock Alert</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => {
+                    const isLow = item.currentStallStock <= item.lowStockThreshold;
+                    return (
+                      <TableRow key={item._id}>
+                        <TableCell>
+                          <span className="font-medium">{item.name}</span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {isLow && <AlertTriangle className="w-4 h-4 text-destructive" />}
+                            <span className={`font-semibold text-lg ${isLow ? 'text-destructive' : 'text-foreground'}`}>
+                              {item.currentStallStock}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-muted-foreground">{item.targetSkus}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">
+                            ≤ {item.lowStockThreshold}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium">₹{item.price}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={item.isActive ? 'default' : 'secondary'}>
+                            {item.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Card>
 
         {/* Empty State */}

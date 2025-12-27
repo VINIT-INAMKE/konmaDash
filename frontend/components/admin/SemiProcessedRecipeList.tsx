@@ -1,10 +1,17 @@
 'use client';
 
 import { SemiProcessedRecipe } from '@/types';
-import { DataTable, Column } from '../DataTable';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface SemiProcessedRecipeListProps {
   recipes: SemiProcessedRecipe[];
@@ -19,86 +26,94 @@ export function SemiProcessedRecipeList({
   onEdit,
   onDelete,
 }: SemiProcessedRecipeListProps) {
-  const columns: Column<SemiProcessedRecipe>[] = [
-    {
-      header: 'Recipe Name',
-      accessor: 'outputName',
-      cell: (value) => <span className="font-medium">{value}</span>,
-    },
-    {
-      header: 'Output',
-      accessor: 'outputQuantity',
-      cell: (_, row) => (
-        <span>
-          {row.outputQuantity} {row.outputUnit}
-        </span>
-      ),
-    },
-    {
-      header: 'Ingredients',
-      accessor: 'ingredients',
-      cell: (ingredients) => (
-        <div className="flex flex-wrap gap-1">
-          {ingredients.map((ing: any, idx: number) => (
-            <Badge key={idx} variant="outline" className="text-xs">
-              {ing.rawIngredientName}: {ing.quantity}
-              {ing.unit}
-            </Badge>
-          ))}
-        </div>
-      ),
-    },
-    {
-      header: 'Instructions',
-      accessor: 'instructions',
-      cell: (value) =>
-        value ? (
-          <span className="text-sm text-gray-600 line-clamp-2">{value}</span>
-        ) : (
-          <span className="text-gray-400">-</span>
-        ),
-    },
-    {
-      header: 'Created',
-      accessor: 'createdAt',
-      cell: (value) =>
-        value ? new Date(value).toLocaleDateString() : <span>-</span>,
-    },
-    {
-      header: 'Actions',
-      accessor: '_id',
-      cell: (_, row) => (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onEdit(row)}
-            className="h-8"
-          >
-            <Edit className="w-4 h-4 mr-1" />
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => {
-              if (
-                confirm(
-                  `Are you sure you want to delete recipe "${row.outputName}"? This action cannot be undone.`
-                )
-              ) {
-                onDelete(row._id);
-              }
-            }}
-            className="h-8"
-          >
-            <Trash2 className="w-4 h-4 mr-1" />
-            Delete
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
-  return <DataTable data={recipes} columns={columns} loading={loading} />;
+  if (recipes.length === 0) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        No semi-processed recipes found. Add your first recipe to get started.
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Recipe Name</TableHead>
+          <TableHead>Output</TableHead>
+          <TableHead>Ingredients</TableHead>
+          <TableHead>Instructions</TableHead>
+          <TableHead>Created</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {recipes.map((recipe) => (
+          <TableRow key={recipe._id}>
+            <TableCell className="font-medium">{recipe.outputName}</TableCell>
+            <TableCell>
+              {recipe.outputQuantity} {recipe.outputUnit}
+            </TableCell>
+            <TableCell>
+              <div className="flex flex-wrap gap-1">
+                {recipe.ingredients.map((ing, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs">
+                    {ing.rawIngredientName}: {ing.quantity}
+                    {ing.unit}
+                  </Badge>
+                ))}
+              </div>
+            </TableCell>
+            <TableCell>
+              {recipe.instructions ? (
+                <span className="text-sm text-muted-foreground line-clamp-2">
+                  {recipe.instructions}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </TableCell>
+            <TableCell className="text-sm text-muted-foreground">
+              {recipe.createdAt ? new Date(recipe.createdAt).toLocaleDateString() : '-'}
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex gap-2 justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onEdit(recipe)}
+                >
+                  <Edit className="w-4 h-4 mr-1" />
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        `Are you sure you want to delete recipe "${recipe.outputName}"? This action cannot be undone.`
+                      )
+                    ) {
+                      onDelete(recipe._id);
+                    }
+                  }}
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
 }

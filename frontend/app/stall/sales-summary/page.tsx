@@ -4,7 +4,14 @@ import { useState, useEffect } from 'react';
 import { stallApi } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DataTable, Column } from '@/components/DataTable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { BarChart3, RefreshCw, TrendingUp } from 'lucide-react';
 
 interface SalesSummaryItem {
@@ -31,38 +38,6 @@ export default function SalesSummaryPage() {
     }
     setLoading(false);
   };
-
-  const columns: Column<SalesSummaryItem>[] = [
-    {
-      header: 'SKU Name',
-      accessor: 'skuName',
-      cell: (value) => <span className="font-medium">{value}</span>,
-    },
-    {
-      header: 'Total Quantity Sold',
-      accessor: 'totalQuantity',
-      cell: (value) => <span className="font-semibold text-lg text-primary">{value}</span>,
-    },
-    {
-      header: 'Total Revenue',
-      accessor: 'totalRevenue',
-      cell: (value) => <span className="font-semibold text-lg text-foreground">₹{value.toFixed(2)}</span>,
-    },
-    {
-      header: 'Sales Count',
-      accessor: 'salesCount',
-      cell: (value) => <span className="text-muted-foreground">{value}</span>,
-    },
-    {
-      header: 'Avg per Sale',
-      accessor: 'totalRevenue',
-      cell: (_, row) => (
-        <span className="text-sm text-muted-foreground">
-          ₹{(row.totalRevenue / row.salesCount).toFixed(2)}
-        </span>
-      ),
-    },
-  ];
 
   const totalRevenue = summary.reduce((sum, s) => sum + s.totalRevenue, 0);
   const totalQuantity = summary.reduce((sum, s) => sum + s.totalQuantity, 0);
@@ -190,7 +165,48 @@ export default function SalesSummaryPage() {
             </Button>
           </div>
 
-          <DataTable data={summary} columns={columns} loading={loading} />
+          {loading ? (
+            <div className="w-full p-8 text-center text-muted-foreground">
+              Loading sales summary...
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SKU Name</TableHead>
+                    <TableHead>Total Quantity Sold</TableHead>
+                    <TableHead>Total Revenue</TableHead>
+                    <TableHead>Sales Count</TableHead>
+                    <TableHead>Avg per Sale</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {summary.map((item) => (
+                    <TableRow key={item._id}>
+                      <TableCell>
+                        <span className="font-medium">{item.skuName}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-lg text-primary">{item.totalQuantity}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-lg text-foreground">₹{item.totalRevenue.toFixed(2)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground">{item.salesCount}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          ₹{(item.totalRevenue / item.salesCount).toFixed(2)}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Card>
 
         {/* Empty State */}

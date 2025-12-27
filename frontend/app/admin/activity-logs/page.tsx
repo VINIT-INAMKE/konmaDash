@@ -5,7 +5,14 @@ import { ActivityLog } from '@/types';
 import { logsApi } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DataTable, Column } from '@/components/DataTable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { FileText, RefreshCw, Filter } from 'lucide-react';
 import {
   Select,
@@ -18,7 +25,7 @@ import {
 export default function ActivityLogsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState<string>('');
+  const [category, setCategory] = useState<string>('all');
 
   useEffect(() => {
     loadLogs();
@@ -26,7 +33,7 @@ export default function ActivityLogsPage() {
 
   const loadLogs = async () => {
     setLoading(true);
-    const params = category ? { category, limit: 200 } : { limit: 200 };
+    const params = category && category !== 'all' ? { category, limit: 200 } : { limit: 200 };
     const result = await logsApi.getAll(params);
     if (result.success && result.data) {
       setLogs(result.data as ActivityLog[]);
@@ -43,43 +50,11 @@ export default function ActivityLogsPage() {
       SKU: 'bg-pink-100 text-pink-800',
       STALL: 'bg-yellow-100 text-yellow-800',
       SYSTEM: 'bg-gray-100 text-gray-800',
+      AUTH: 'bg-indigo-100 text-indigo-800',
+      USER: 'bg-teal-100 text-teal-800',
     };
     return colors[cat] || 'bg-gray-100 text-gray-800';
   };
-
-  const columns: Column<ActivityLog>[] = [
-    {
-      header: 'Time',
-      accessor: 'createdAt',
-      cell: (value) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(value).toLocaleString('en-IN', {
-            dateStyle: 'short',
-            timeStyle: 'short'
-          })}
-        </span>
-      ),
-    },
-    {
-      header: 'Category',
-      accessor: 'category',
-      cell: (value) => (
-        <span className={`text-xs px-2 py-1 rounded-full font-medium ${getCategoryBadgeColor(value)}`}>
-          {value.replace('_', ' ')}
-        </span>
-      ),
-    },
-    {
-      header: 'Description',
-      accessor: 'description',
-      cell: (value) => <span className="text-sm">{value}</span>,
-    },
-    {
-      header: 'Performed By',
-      accessor: 'performedBy',
-      cell: (value) => <span className="text-xs text-muted-foreground">{value}</span>,
-    },
-  ];
 
   return (
     <div>
@@ -115,7 +90,7 @@ export default function ActivityLogsPage() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="RAW_INGREDIENT">Raw Ingredient</SelectItem>
                   <SelectItem value="SEMI_PROCESSED">Semi Processed</SelectItem>
                   <SelectItem value="RECIPE">Recipe</SelectItem>
@@ -134,7 +109,49 @@ export default function ActivityLogsPage() {
           </div>
 
           {/* Activity Log Table */}
-          <DataTable data={logs} columns={columns} loading={loading} />
+          {loading ? (
+            <div className="w-full p-8 text-center text-muted-foreground">
+              Loading activity logs...
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Time</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Performed By</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {logs.map((log) => (
+                    <TableRow key={log._id}>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(log.createdAt).toLocaleString('en-IN', {
+                            dateStyle: 'short',
+                            timeStyle: 'short'
+                          })}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${getCategoryBadgeColor(log.category)}`}>
+                          {log.category.replace('_', ' ')}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{log.description}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-muted-foreground">{log.performedBy}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Card>
 
         {/* Empty State */}

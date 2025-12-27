@@ -5,7 +5,14 @@ import { SemiProcessedItem } from '@/types';
 import { semiProcessedItemsApi } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DataTable, Column } from '@/components/DataTable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Package } from 'lucide-react';
 
 export default function InventoryPage() {
@@ -24,69 +31,6 @@ export default function InventoryPage() {
     }
     setLoading(false);
   };
-
-  const columns: Column<SemiProcessedItem>[] = [
-    {
-      header: 'Item Name',
-      accessor: 'name',
-      cell: (value) => <span className="font-medium">{value}</span>,
-    },
-    {
-      header: 'Type',
-      accessor: 'type',
-      cell: (value) => (
-        <Badge variant={value === 'batch' ? 'default' : 'secondary'}>
-          {value === 'batch' ? 'Batch' : 'Fixed'}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Current Stock',
-      accessor: 'currentStock',
-      cell: (value, row) => (
-        <div>
-          <span className="font-semibold text-lg">
-            {row.currentStock} {row.unit}
-          </span>
-        </div>
-      ),
-    },
-    {
-      header: 'Batches',
-      accessor: 'batches',
-      cell: (batches: Array<{ batchId: string; quantity: number; createdAt: string }> | undefined) => {
-        if (!batches || batches.length === 0) {
-          return <span className="text-muted-foreground">No batches</span>;
-        }
-        return (
-          <div className="space-y-1">
-            {batches.map((batch, idx) => (
-              <div key={batch.batchId || idx} className="text-sm">
-                <Badge variant="outline" className="mr-2">
-                  Batch: {batch.quantity}
-                </Badge>
-                <span className="text-muted-foreground">
-                  {new Date(batch.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-            ))}
-          </div>
-        );
-      },
-    },
-    {
-      header: 'Last Updated',
-      accessor: 'updatedAt',
-      cell: (value) =>
-        value ? (
-          <span className="text-sm text-muted-foreground">
-            {new Date(value).toLocaleString()}
-          </span>
-        ) : (
-          <span>-</span>
-        ),
-    },
-  ];
 
   return (
     <div>
@@ -137,7 +81,71 @@ export default function InventoryPage() {
           </div>
 
           {/* Inventory Table */}
-          <DataTable data={items} columns={columns} loading={loading} />
+          {loading ? (
+            <div className="w-full p-8 text-center text-muted-foreground">
+              Loading inventory...
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Current Stock</TableHead>
+                    <TableHead>Batches</TableHead>
+                    <TableHead>Last Updated</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item) => (
+                    <TableRow key={item._id}>
+                      <TableCell>
+                        <span className="font-medium">{item.name}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={item.type === 'batch' ? 'default' : 'secondary'}>
+                          {item.type === 'batch' ? 'Batch' : 'Fixed'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-lg">
+                          {item.currentStock} {item.unit}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {!item.batches || item.batches.length === 0 ? (
+                          <span className="text-muted-foreground">No batches</span>
+                        ) : (
+                          <div className="space-y-1">
+                            {item.batches.map((batch, idx) => (
+                              <div key={batch.batchId || idx} className="text-sm">
+                                <Badge variant="outline" className="mr-2">
+                                  Batch: {batch.quantity}
+                                </Badge>
+                                <span className="text-muted-foreground">
+                                  {new Date(batch.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {item.updatedAt ? (
+                          <span className="text-sm text-muted-foreground">
+                            {new Date(item.updatedAt).toLocaleString()}
+                          </span>
+                        ) : (
+                          <span>-</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Card>
 
         {/* Empty State */}

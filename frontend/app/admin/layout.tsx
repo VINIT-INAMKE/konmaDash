@@ -14,8 +14,14 @@ import {
   Menu,
   X,
   FileText,
+  Users,
+  LogOut,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { useAuth } from '@/contexts/AuthContext';
 
 const adminLinks = [
   {
@@ -53,6 +59,11 @@ const adminLinks = [
     label: 'Activity Logs',
     icon: FileText,
   },
+  {
+    href: '/admin/users',
+    label: 'User Management',
+    icon: Users,
+  },
 ];
 
 export default function AdminLayout({
@@ -62,11 +73,13 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
+    <ProtectedRoute allowedRoles={['admin']}>
+      <div className="flex min-h-screen bg-background">
+        {/* Mobile Header */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border">
         <div className="flex items-center justify-between p-4">
           <div>
             <h2 className="text-lg font-bold text-card-foreground">Admin Panel</h2>
@@ -132,7 +145,33 @@ export default function AdminLayout({
         </nav>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border">
+        <div className="p-4 border-t border-border space-y-2">
+          {/* User Info */}
+          {user && (
+            <div className="px-3 py-2 rounded-lg bg-muted">
+              <div className="flex items-center gap-2 mb-1">
+                <User className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-medium">{user.username}</span>
+              </div>
+              <p className="text-xs text-muted-foreground capitalize">{user.role}</p>
+            </div>
+          )}
+
+          <AnimatedThemeToggler className="w-full h-10 rounded-lg bg-muted hover:bg-accent flex items-center justify-center transition-colors" />
+
+          <Button
+            variant="outline"
+            className="w-full justify-start"
+            size="sm"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              logout();
+            }}
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </Button>
+
           <Link href="/" onClick={() => setMobileMenuOpen(false)}>
             <Button variant="outline" className="w-full justify-start" size="sm">
               <ChevronLeft className="w-4 h-4 mr-2" />
@@ -146,6 +185,7 @@ export default function AdminLayout({
       <main className="flex-1 overflow-auto pt-16 lg:pt-0">
         <div className="p-4 sm:p-6 lg:p-8">{children}</div>
       </main>
-    </div>
+      </div>
+    </ProtectedRoute>
   );
 }

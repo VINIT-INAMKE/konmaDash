@@ -226,7 +226,7 @@ export const receiveAtStall = async (transferId, receivedBy = 'Stall Staff') => 
  * Record a sale at the stall
  * Deducts from stall stock
  */
-export const recordSale = async (skuId, quantity, soldBy = 'Stall Staff', customerName = '', customerPhone = '', paymentMethod = 'cash') => {
+export const recordSale = async (skuId, quantity, soldBy = 'Stall Staff', customerName = '', customerPhone = '', paymentMethod = 'cash', transactionId = '') => {
   const sku = await SkuItem.findById(skuId);
   if (!sku) {
     throw new Error('SKU item not found');
@@ -252,7 +252,8 @@ export const recordSale = async (skuId, quantity, soldBy = 'Stall Staff', custom
     soldBy,
     customerName,
     customerPhone,
-    paymentMethod
+    paymentMethod,
+    transactionId
   });
   await sale.save();
 

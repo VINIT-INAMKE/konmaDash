@@ -8,8 +8,12 @@ import {
   getSales,
   getSalesSummary
 } from '../controllers/stallController.js';
+import { authenticate, requireStall } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Protect all stall routes - require authentication and stall or admin role
+router.use(authenticate, requireStall);
 
 // Transfers (view only - counter stock auto-updated by kitchen)
 router.get('/pending-transfers', getPendingTransfers);  // Deprecated - returns empty

@@ -6,8 +6,8 @@ import BatchCookingLog from '../models/BatchCookingLog.js';
 // Batch cooking
 export const createBatch = async (req, res) => {
   try {
-    const { recipeId, multiplier, createdBy } = req.body;
-    const result = await cookBatch(recipeId, multiplier, createdBy);
+    const { recipeId, multiplier } = req.body;
+    const result = await cookBatch(recipeId, multiplier, req.user.username);
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
@@ -38,8 +38,8 @@ export const getSemiProcessedInventory = async (req, res) => {
 // Transfers
 export const createTransfer = async (req, res) => {
   try {
-    const { skuId, quantity, sentBy } = req.body;
-    const result = await sendToStall(skuId, quantity, sentBy);
+    const { skuId, quantity } = req.body;
+    const result = await sendToStall(skuId, quantity, req.user.username);
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

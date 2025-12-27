@@ -21,7 +21,6 @@ export default function SendToCounterPage() {
   const [skus, setSkus] = useState<SkuItem[]>([]);
   const [selectedSkuId, setSelectedSkuId] = useState('');
   const [quantity, setQuantity] = useState(1);
-  const [sentBy, setSentBy] = useState('Kitchen Staff');
   const [loading, setLoading] = useState(false);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
   const [availability, setAvailability] = useState<any>(null);
@@ -80,7 +79,6 @@ export default function SendToCounterPage() {
     const result = await kitchenApi.sendToCounter({
       skuId: selectedSkuId,
       quantity,
-      sentBy,
     });
 
     if (result.success) {
@@ -158,16 +156,6 @@ export default function SendToCounterPage() {
                     value={quantity}
                     onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
                     placeholder="Enter quantity"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="sentBy">Sent By</Label>
-                  <Input
-                    id="sentBy"
-                    value={sentBy}
-                    onChange={(e) => setSentBy(e.target.value)}
-                    placeholder="Enter staff name"
                   />
                 </div>
 

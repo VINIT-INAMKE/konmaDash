@@ -5,7 +5,14 @@ import { SalesLog } from '@/types';
 import { stallApi } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { DataTable, Column } from '@/components/DataTable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { History, RefreshCw, Eye, Printer } from 'lucide-react';
 import {
   Dialog,
@@ -44,57 +51,6 @@ export default function SalesHistoryPage() {
     setSelectedSale(sale);
     setIsDialogOpen(true);
   };
-
-  const columns: Column<SalesLog>[] = [
-    {
-      header: 'SKU Name',
-      accessor: 'skuName',
-      cell: (value) => <span className="font-medium">{value}</span>,
-    },
-    {
-      header: 'Quantity',
-      accessor: 'quantity',
-      cell: (value) => <span className="font-semibold text-lg">{value}</span>,
-    },
-    {
-      header: 'Total Amount',
-      accessor: 'totalAmount',
-      cell: (value) => <span className="font-semibold text-primary">₹{value.toFixed(2)}</span>,
-    },
-    {
-      header: 'Customer',
-      accessor: 'customerName',
-      cell: (value) => <span className="text-sm">{value || '-'}</span>,
-    },
-    {
-      header: 'Payment',
-      accessor: 'paymentMethod',
-      cell: (value) => <span className="text-xs uppercase font-medium">{value || 'cash'}</span>,
-    },
-    {
-      header: 'Date & Time',
-      accessor: 'createdAt',
-      cell: (value) => (
-        <span className="text-sm text-muted-foreground">
-          {new Date(value).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
-        </span>
-      ),
-    },
-    {
-      header: 'Actions',
-      accessor: '_id',
-      cell: (value, row) => (
-        <Button
-          onClick={() => handleViewDetails(row as SalesLog)}
-          variant="outline"
-          size="sm"
-        >
-          <Eye className="w-4 h-4 mr-1" />
-          View
-        </Button>
-      ),
-    },
-  ];
 
   const totalSales = sales.reduce((sum, s) => sum + s.totalAmount, 0);
   const totalItems = sales.reduce((sum, s) => sum + s.quantity, 0);
@@ -158,7 +114,63 @@ export default function SalesHistoryPage() {
           </div>
 
           {/* Sales Table */}
-          <DataTable data={sales} columns={columns} loading={loading} />
+          {loading ? (
+            <div className="w-full p-8 text-center text-muted-foreground">
+              Loading sales history...
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SKU Name</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Total Amount</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead>Payment</TableHead>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sales.map((sale) => (
+                    <TableRow key={sale._id}>
+                      <TableCell>
+                        <span className="font-medium">{sale.skuName}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-lg">{sale.quantity}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-primary">₹{sale.totalAmount.toFixed(2)}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{sale.customerName || '-'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs uppercase font-medium">{sale.paymentMethod || 'cash'}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(sale.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          onClick={() => handleViewDetails(sale)}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Card>
 
         {/* Empty State */}

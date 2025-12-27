@@ -51,8 +51,8 @@ export const getStallInventory = async (req, res) => {
 // Sales
 export const createSale = async (req, res) => {
   try {
-    const { skuId, quantity, soldBy, customerName, customerPhone, paymentMethod } = req.body;
-    const result = await recordSale(skuId, quantity, soldBy, customerName, customerPhone, paymentMethod);
+    const { skuId, quantity, customerName, customerPhone, paymentMethod, transactionId } = req.body;
+    const result = await recordSale(skuId, quantity, req.user.username, customerName, customerPhone, paymentMethod, transactionId);
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });

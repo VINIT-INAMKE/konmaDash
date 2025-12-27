@@ -22,7 +22,6 @@ export default function BatchCookingPage() {
   const [recipes, setRecipes] = useState<SemiProcessedRecipe[]>([]);
   const [selectedRecipeId, setSelectedRecipeId] = useState('');
   const [multiplier, setMultiplier] = useState(1);
-  const [cookedBy, setCookedBy] = useState('Kitchen Staff');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -53,7 +52,6 @@ export default function BatchCookingPage() {
     const result = await kitchenApi.cookBatch({
       recipeId: selectedRecipeId,
       multiplier,
-      createdBy: cookedBy,
     });
 
     if (result.success) {
@@ -122,16 +120,6 @@ export default function BatchCookingPage() {
                     Will produce: {selectedRecipe.outputQuantity * multiplier}{' '}
                     {selectedRecipe.outputUnit}
                   </p>
-                </div>
-
-                <div>
-                  <Label htmlFor="cookedBy">Cooked By</Label>
-                  <Input
-                    id="cookedBy"
-                    value={cookedBy}
-                    onChange={(e) => setCookedBy(e.target.value)}
-                    placeholder="Enter staff name"
-                  />
                 </div>
 
                 <Button onClick={handleCook} disabled={loading} className="w-full">

@@ -5,7 +5,14 @@ import { TransferLog } from '@/types';
 import { stallApi } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { DataTable, Column } from '@/components/DataTable';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { TrendingUp } from 'lucide-react';
 
 export default function TransferHistoryPage() {
@@ -24,42 +31,6 @@ export default function TransferHistoryPage() {
     }
     setLoading(false);
   };
-
-  const columns: Column<TransferLog>[] = [
-    {
-      header: 'SKU Name',
-      accessor: 'skuName',
-      cell: (value) => <span className="font-medium">{value}</span>,
-    },
-    {
-      header: 'Quantity',
-      accessor: 'quantity',
-      cell: (value) => <span className="font-semibold text-lg text-primary">{value}</span>,
-    },
-    {
-      header: 'Status',
-      accessor: 'status',
-      cell: (value) => (
-        <Badge variant="default">
-          {value === 'completed' ? 'Completed' : value}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Sent At',
-      accessor: 'sentAt',
-      cell: (value) => (
-        <span className="text-sm text-muted-foreground">
-          {new Date(value).toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      header: 'Sent By',
-      accessor: 'sentBy',
-      cell: (value) => <span className="text-sm text-muted-foreground">{value}</span>,
-    },
-  ];
 
   return (
     <div>
@@ -108,7 +79,50 @@ export default function TransferHistoryPage() {
           </div>
 
           {/* Transfer Table */}
-          <DataTable data={transfers} columns={columns} loading={loading} />
+          {loading ? (
+            <div className="w-full p-8 text-center text-muted-foreground">
+              Loading transfer history...
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>SKU Name</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Sent At</TableHead>
+                    <TableHead>Sent By</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transfers.map((transfer) => (
+                    <TableRow key={transfer._id}>
+                      <TableCell>
+                        <span className="font-medium">{transfer.skuName}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-semibold text-lg text-primary">{transfer.quantity}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="default">
+                          {transfer.status === 'completed' ? 'Completed' : transfer.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(transfer.sentAt).toLocaleString()}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">{transfer.sentBy}</span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Card>
 
         {/* Info Card */}

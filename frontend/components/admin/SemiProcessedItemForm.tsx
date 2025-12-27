@@ -31,6 +31,7 @@ export function SemiProcessedItemForm({
     type: initialData?.type || 'batch',
     unit: initialData?.unit || 'ml',
     currentStock: initialData?.currentStock || 0,
+    imageUrl: initialData?.imageUrl || '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,9 +40,12 @@ export function SemiProcessedItemForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Item Name</Label>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Item Name */}
+      <div className="space-y-2">
+        <Label htmlFor="name">
+          Item Name <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="name"
           value={formData.name}
@@ -51,53 +55,83 @@ export function SemiProcessedItemForm({
         />
       </div>
 
-      <div>
-        <Label htmlFor="type">Type</Label>
-        <Select
-          value={formData.type}
-          onValueChange={(value) =>
-            setFormData({ ...formData, type: value as 'batch' | 'fixed' })
-          }
-        >
-          <SelectTrigger id="type">
-            <SelectValue placeholder="Select type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="batch">Batch (Cooked/Prepared)</SelectItem>
-            <SelectItem value="fixed">Fixed (Pre-made/Frozen)</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-sm text-gray-500 mt-1">
-          Batch: Items cooked in kitchen (gravies, etc). Fixed: Pre-made items
-          (danish, cheese blocks)
+      {/* Image URL */}
+      <div className="space-y-2">
+        <Label htmlFor="imageUrl">Image URL</Label>
+        <Input
+          id="imageUrl"
+          type="url"
+          value={formData.imageUrl}
+          onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+          placeholder="https://example.com/image.jpg"
+        />
+        <p className="text-xs text-muted-foreground">
+          Optional: URL to product image for display in sales interface
         </p>
       </div>
 
-      <div>
-        <Label htmlFor="unit">Unit of Measurement</Label>
-        <Select
-          value={formData.unit}
-          onValueChange={(value) => setFormData({ ...formData, unit: value })}
-        >
-          <SelectTrigger id="unit">
-            <SelectValue placeholder="Select unit" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ml">ml (milliliters)</SelectItem>
-            <SelectItem value="L">L (liters)</SelectItem>
-            <SelectItem value="g">g (grams)</SelectItem>
-            <SelectItem value="kg">kg (kilograms)</SelectItem>
-            <SelectItem value="nos">nos (pieces)</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Type and Unit - Grid on larger screens */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Type */}
+        <div className="space-y-2">
+          <Label htmlFor="type">
+            Type <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={formData.type}
+            onValueChange={(value) =>
+              setFormData({ ...formData, type: value as 'batch' | 'fixed' })
+            }
+          >
+            <SelectTrigger id="type">
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="batch">Batch (Cooked)</SelectItem>
+              <SelectItem value="fixed">Fixed (Pre-made)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Unit */}
+        <div className="space-y-2">
+          <Label htmlFor="unit">
+            Unit <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={formData.unit}
+            onValueChange={(value) => setFormData({ ...formData, unit: value })}
+          >
+            <SelectTrigger id="unit">
+              <SelectValue placeholder="Select unit" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ml">ml (milliliters)</SelectItem>
+              <SelectItem value="L">L (liters)</SelectItem>
+              <SelectItem value="g">g (grams)</SelectItem>
+              <SelectItem value="kg">kg (kilograms)</SelectItem>
+              <SelectItem value="nos">nos (pieces)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      <div>
-        <Label htmlFor="currentStock">Current Stock</Label>
+      {/* Help Text */}
+      <p className="text-sm text-muted-foreground">
+        <span className="font-medium">Batch:</span> Items cooked in kitchen (gravies, etc).
+        <span className="font-medium ml-2">Fixed:</span> Pre-made items (danish, cheese blocks)
+      </p>
+
+      {/* Current Stock */}
+      <div className="space-y-2">
+        <Label htmlFor="currentStock">
+          Current Stock <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="currentStock"
           type="number"
           step="0.01"
+          min="0"
           value={formData.currentStock}
           onChange={(e) =>
             setFormData({
@@ -109,12 +143,23 @@ export function SemiProcessedItemForm({
         />
       </div>
 
-      <div className="flex gap-3 pt-4">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : 'Save'}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+      {/* Buttons */}
+      <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="w-full sm:w-auto"
+          disabled={isLoading}
+        >
           Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full sm:w-auto sm:ml-auto"
+        >
+          {isLoading ? 'Saving...' : 'Save'}
         </Button>
       </div>
     </form>

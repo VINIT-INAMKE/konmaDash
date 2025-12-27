@@ -1,7 +1,16 @@
 'use client';
 
 import { RawIngredient } from '@/types';
-import { DataTable, Column } from '../DataTable';
+import { Button } from '@/components/ui/button';
+import { Pencil, Trash2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface RawIngredientListProps {
   ingredients: RawIngredient[];
@@ -16,76 +25,87 @@ export function RawIngredientList({
   onEdit,
   onDelete,
 }: RawIngredientListProps) {
-  const columns: Column<RawIngredient>[] = [
-    {
-      header: 'Name',
-      accessor: 'name',
-      cell: (value) => <span className="font-medium">{value}</span>,
-    },
-    {
-      header: 'Current Stock',
-      accessor: (row) => `${row.currentStock} ${row.unit}`,
-      cell: (value, row) => {
-        const isLow = row.currentStock <= row.reorderLevel;
-        return (
-          <span className={isLow ? 'text-red-600 font-medium' : ''}>
-            {value}
-            {isLow && ' ⚠️'}
-          </span>
-        );
-      },
-    },
-    {
-      header: 'Reorder Level',
-      accessor: (row) => `${row.reorderLevel} ${row.unit}`,
-    },
-    {
-      header: 'Can Replenish',
-      accessor: 'canReplenish',
-      cell: (value) => (
-        <span
-          className={`px-2 py-1 rounded text-xs ${
-            value
-              ? 'bg-green-100 text-green-800'
-              : 'bg-gray-100 text-gray-800'
-          }`}
-        >
-          {value ? 'Yes' : 'No'}
-        </span>
-      ),
-    },
-    {
-      header: 'Actions',
-      accessor: '_id',
-      cell: (_, row) => (
-        <div className="flex gap-2">
-          <button
-            onClick={() => onEdit(row)}
-            className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
-          >
-            Edit
-          </button>
-          <button
-            onClick={() => {
-              if (confirm(`Delete ${row.name}?`)) {
-                onDelete(row._id);
-              }
-            }}
-            className="px-3 py-1 text-sm bg-red-50 text-red-600 rounded hover:bg-red-100"
-          >
-            Delete
-          </button>
-        </div>
-      ),
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
+
+  if (ingredients.length === 0) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        No raw ingredients found. Add your first ingredient to get started.
+      </div>
+    );
+  }
 
   return (
-    <DataTable
-      data={ingredients}
-      columns={columns}
-      loading={loading}
-      emptyMessage="No raw ingredients found. Add your first ingredient to get started."
-    />
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Current Stock</TableHead>
+          <TableHead>Reorder Level</TableHead>
+          <TableHead>Can Replenish</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {ingredients.map((ingredient) => {
+          const isLow = ingredient.currentStock <= ingredient.reorderLevel;
+          return (
+            <TableRow key={ingredient._id}>
+              <TableCell className="font-medium">{ingredient.name}</TableCell>
+              <TableCell>
+                <span className={isLow ? 'text-destructive font-medium' : ''}>
+                  {ingredient.currentStock} {ingredient.unit}
+                  {isLow && ' ⚠️'}
+                </span>
+              </TableCell>
+              <TableCell>
+                {ingredient.reorderLevel} {ingredient.unit}
+              </TableCell>
+              <TableCell>
+                <span
+                  className={`px-2 py-1 rounded text-xs font-medium ${
+                    ingredient.canReplenish
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {ingredient.canReplenish ? 'Yes' : 'No'}
+                </span>
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    onClick={() => onEdit(ingredient)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Pencil className="w-3 h-3 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (confirm(`Delete ${ingredient.name}?`)) {
+                        onDelete(ingredient._id);
+                      }
+                    }}
+                    variant="destructive"
+                    size="sm"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
   );
 }

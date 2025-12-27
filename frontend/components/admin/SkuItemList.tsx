@@ -1,10 +1,17 @@
 'use client';
 
 import { SkuItem } from '@/types';
-import { DataTable, Column } from '../DataTable';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Edit, Trash2, AlertTriangle } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 
 interface SkuItemListProps {
   items: SkuItem[];
@@ -19,93 +26,99 @@ export function SkuItemList({
   onEdit,
   onDelete,
 }: SkuItemListProps) {
-  const columns: Column<SkuItem>[] = [
-    {
-      header: 'SKU Name',
-      accessor: 'name',
-    },
-    {
-      header: 'Counter Stock',
-      accessor: 'currentStallStock',
-      cell: (_, row) => {
-        const isLowStock = row.currentStallStock <= row.lowStockThreshold;
-        return (
-          <div className="flex items-center gap-2">
-            {isLowStock && (
-              <AlertTriangle className="w-4 h-4 text-red-500" />
-            )}
-            <span
-              className={`font-medium ${isLowStock ? 'text-red-600' : ''}`}
-            >
-              {row.currentStallStock}
-            </span>
-          </div>
-        );
-      },
-    },
-    {
-      header: 'Target',
-      accessor: 'targetSkus',
-      cell: (value) => <span className="text-gray-600">{value}</span>,
-    },
-    {
-      header: 'Low Stock Alert',
-      accessor: 'lowStockThreshold',
-      cell: (value) => (
-        <Badge variant="outline" className="text-xs">
-          ≤ {value}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Status',
-      accessor: 'isActive',
-      cell: (value) => (
-        <Badge variant={value ? 'default' : 'secondary'}>
-          {value ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
-    },
-    {
-      header: 'Last Updated',
-      accessor: 'updatedAt',
-      cell: (value) => new Date(value).toLocaleString(),
-    },
-    {
-      header: 'Actions',
-      accessor: '_id',
-      cell: (_, row) => (
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => onEdit(row)}
-            className="h-8"
-          >
-            <Edit className="w-4 h-4 mr-1" />
-            Edit
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => {
-              if (
-                confirm(
-                  `Are you sure you want to delete "${row.name}"? This action cannot be undone.`
-                )
-              ) {
-                onDelete(row._id);
-              }
-            }}
-            className="h-8"
-          >
-            <Trash2 className="w-4 h-4 mr-1" />
-            Delete
-          </Button>
-        </div>
-      ),
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        Loading...
+      </div>
+    );
+  }
 
-  return <DataTable data={items} columns={columns} loading={loading} />;
+  if (items.length === 0) {
+    return (
+      <div className="w-full p-8 text-center text-muted-foreground">
+        No SKU items found. Add your first SKU item to get started.
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>SKU Name</TableHead>
+          <TableHead>Counter Stock</TableHead>
+          <TableHead>Target</TableHead>
+          <TableHead>Low Stock Alert</TableHead>
+          <TableHead>Price</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Last Updated</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {items.map((item) => {
+          const isLowStock = item.currentStallStock <= item.lowStockThreshold;
+          return (
+            <TableRow key={item._id}>
+              <TableCell className="font-medium">{item.name}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-2">
+                  {isLowStock && (
+                    <AlertTriangle className="w-4 h-4 text-destructive" />
+                  )}
+                  <span className={`font-medium ${isLowStock ? 'text-destructive' : ''}`}>
+                    {item.currentStallStock}
+                  </span>
+                </div>
+              </TableCell>
+              <TableCell className="text-muted-foreground">{item.targetSkus}</TableCell>
+              <TableCell>
+                <Badge variant="outline" className="text-xs">
+                  ≤ {item.lowStockThreshold}
+                </Badge>
+              </TableCell>
+              <TableCell className="font-medium">₹{item.price}</TableCell>
+              <TableCell>
+                <Badge variant={item.isActive ? 'default' : 'secondary'}>
+                  {item.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-sm text-muted-foreground">
+                {item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '-'}
+              </TableCell>
+              <TableCell className="text-right">
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onEdit(item)}
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Are you sure you want to delete "${item.name}"? This action cannot be undone.`
+                        )
+                      ) {
+                        onDelete(item._id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
 }

@@ -40,6 +40,13 @@ const activityLogSchema = new mongoose.Schema({
       // Sales
       'SALE_RECORDED',
 
+      // Authentication & Users
+      'USER_LOGIN',
+      'USER_LOGOUT',
+      'USER_CREATED',
+      'USER_UPDATED',
+      'USER_DELETED',
+
       // System
       'SYSTEM_ERROR',
       'SYSTEM_WARNING'
@@ -48,7 +55,7 @@ const activityLogSchema = new mongoose.Schema({
   category: {
     type: String,
     required: true,
-    enum: ['RAW_INGREDIENT', 'SEMI_PROCESSED', 'RECIPE', 'KITCHEN', 'SKU', 'STALL', 'SYSTEM']
+    enum: ['RAW_INGREDIENT', 'SEMI_PROCESSED', 'RECIPE', 'KITCHEN', 'SKU', 'STALL', 'AUTH', 'USER', 'SYSTEM']
   },
   description: {
     type: String,

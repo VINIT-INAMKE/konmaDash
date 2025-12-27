@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Trash2 } from 'lucide-react';
 import { rawIngredientsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface SemiProcessedRecipeFormProps {
   initialData?: SemiProcessedRecipe;
@@ -119,9 +120,12 @@ export function SemiProcessedRecipeForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="outputName">Output Item Name</Label>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Output Name */}
+      <div className="space-y-2">
+        <Label htmlFor="outputName">
+          Output Item Name <span className="text-destructive">*</span>
+        </Label>
         <Input
           id="outputName"
           value={formData.outputName}
@@ -133,13 +137,17 @@ export function SemiProcessedRecipeForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="outputQuantity">Output Quantity</Label>
+      {/* Output Quantity and Unit - Grid on larger screens */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="outputQuantity">
+            Output Quantity <span className="text-destructive">*</span>
+          </Label>
           <Input
             id="outputQuantity"
             type="number"
             step="0.01"
+            min="0"
             value={formData.outputQuantity}
             onChange={(e) =>
               setFormData({
@@ -151,8 +159,10 @@ export function SemiProcessedRecipeForm({
           />
         </div>
 
-        <div>
-          <Label htmlFor="outputUnit">Output Unit</Label>
+        <div className="space-y-2">
+          <Label htmlFor="outputUnit">
+            Output Unit <span className="text-destructive">*</span>
+          </Label>
           <Select
             value={formData.outputUnit}
             onValueChange={(value) =>
@@ -173,7 +183,8 @@ export function SemiProcessedRecipeForm({
         </div>
       </div>
 
-      <div>
+      {/* Instructions */}
+      <div className="space-y-2">
         <Label htmlFor="instructions">Cooking Instructions (Optional)</Label>
         <Textarea
           id="instructions"
@@ -186,10 +197,11 @@ export function SemiProcessedRecipeForm({
         />
       </div>
 
-      <div className="border-t pt-4">
-        <div className="flex justify-between items-center mb-3">
-          <Label>Ingredients</Label>
-          <Button type="button" size="sm" onClick={addIngredient}>
+      {/* Ingredients Section */}
+      <div className="space-y-4 pt-4 border-t">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <Label className="text-base font-semibold">Ingredients</Label>
+          <Button type="button" size="sm" onClick={addIngredient} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-1" />
             Add Ingredient
           </Button>
@@ -197,81 +209,102 @@ export function SemiProcessedRecipeForm({
 
         <div className="space-y-3">
           {ingredients.map((ingredient, index) => (
-            <div
-              key={index}
-              className="grid grid-cols-12 gap-2 items-end p-3 border rounded-lg"
-            >
-              <div className="col-span-5">
-                <Label className="text-xs">Raw Ingredient</Label>
-                <Select
-                  value={ingredient.rawIngredientId}
-                  onValueChange={(value) =>
-                    updateIngredient(index, 'rawIngredientId', value)
-                  }
-                >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Select ingredient" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {rawIngredients.map((ri) => (
-                      <SelectItem key={ri._id} value={ri._id}>
-                        {ri.name} ({ri.unit})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <Card key={index}>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 gap-4">
+                  {/* Ingredient Select - Full width on mobile */}
+                  <div className="space-y-2">
+                    <Label className="text-xs font-medium">
+                      Raw Ingredient <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={ingredient.rawIngredientId}
+                      onValueChange={(value) =>
+                        updateIngredient(index, 'rawIngredientId', value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue>
+                          {ingredient.rawIngredientId && ingredient.rawIngredientName
+                            ? `${ingredient.rawIngredientName} (${ingredient.unit})`
+                            : 'Select ingredient'}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {rawIngredients.map((ri) => (
+                          <SelectItem key={ri._id} value={ri._id}>
+                            {ri.name} ({ri.unit})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-              <div className="col-span-3">
-                <Label className="text-xs">Quantity</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={ingredient.quantity}
-                  onChange={(e) =>
-                    updateIngredient(
-                      index,
-                      'quantity',
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  className="h-9"
-                  required
-                />
-              </div>
+                  {/* Quantity and Unit in a row */}
+                  <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">
+                        Quantity <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={ingredient.quantity}
+                        onChange={(e) =>
+                          updateIngredient(
+                            index,
+                            'quantity',
+                            parseFloat(e.target.value) || 0
+                          )
+                        }
+                        required
+                      />
+                    </div>
 
-              <div className="col-span-3">
-                <Label className="text-xs">Unit</Label>
-                <Input
-                  value={ingredient.unit}
-                  disabled
-                  className="h-9 bg-gray-50"
-                />
-              </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium">Unit</Label>
+                      <Input
+                        value={ingredient.unit}
+                        disabled
+                        className="bg-muted"
+                      />
+                    </div>
 
-              <div className="col-span-1">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="destructive"
-                  onClick={() => removeIngredient(index)}
-                  disabled={ingredients.length === 1}
-                  className="h-9 w-9 p-0"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="destructive"
+                      onClick={() => removeIngredient(index)}
+                      disabled={ingredients.length === 1}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
 
-      <div className="flex gap-3 pt-4">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : 'Save Recipe'}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
+      {/* Buttons */}
+      <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onCancel}
+          className="w-full sm:w-auto"
+          disabled={isLoading}
+        >
           Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="w-full sm:w-auto sm:ml-auto"
+        >
+          {isLoading ? 'Saving...' : 'Save Recipe'}
         </Button>
       </div>
     </form>

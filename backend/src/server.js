@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 
 // Import routes
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
 import adminRoutes from './routes/admin.js';
 import kitchenRoutes from './routes/kitchen.js';
 import stallRoutes from './routes/stall.js';
@@ -23,6 +25,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/kitchen', kitchenRoutes);
 app.use('/api/stall', stallRoutes);

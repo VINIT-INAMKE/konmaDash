@@ -39,6 +39,10 @@ const salesLogSchema = new mongoose.Schema({
     type: String,
     enum: ['cash', 'upi', 'card', 'other'],
     default: 'cash'
+  },
+  transactionId: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true
