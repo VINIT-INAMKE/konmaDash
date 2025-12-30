@@ -189,7 +189,7 @@ export function SemiProcessedRecipeForm({
           <Select
             value={formData.storageTemp}
             onValueChange={(value) =>
-              setFormData({ ...formData, storageTemp: value })
+              setFormData({ ...formData, storageTemp: value as 'chiller_2_4' | 'freezer_minus_18' | 'warm_30_32' | 'room_temp' })
             }
           >
             <SelectTrigger id="storageTemp">

@@ -207,9 +207,45 @@ export const stallApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  recordCartSale: (data: {
+    cartItems: Array<{
+      skuId: string;
+      quantity: number;
+    }>;
+    customerName?: string;
+    customerPhone?: string;
+    paymentMethod?: string;
+    transactionId?: string;
+  }) =>
+    apiRequest('/api/stall/cart-sale', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   getSales: (params?: { startDate?: string; endDate?: string }) => {
     const queryParams = new URLSearchParams(params as any).toString();
     return apiRequest(`/api/stall/sales${queryParams ? `?${queryParams}` : ''}`);
+  },
+  // Unified transactions API (NEW - single source of truth)
+  createTransaction: (data: {
+    items: Array<{ skuId: string; quantity: number }>;
+    customerName?: string;
+    customerPhone?: string;
+    paymentMethod?: 'cash' | 'upi' | 'card' | 'other';
+    paymentTransactionId?: string;
+  }) =>
+    apiRequest('/api/stall/transaction', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getTransactions: (params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return apiRequest(`/api/stall/transactions${queryParams ? `?${queryParams}` : ''}`);
+  },
+  
+  // Legacy APIs (for backward compatibility)
+  getCartSales: (params?: { startDate?: string; endDate?: string }) => {
+    const queryParams = new URLSearchParams(params as any).toString();
+    return apiRequest(`/api/stall/cart-sales${queryParams ? `?${queryParams}` : ''}`);
   },
   getSalesSummary: () => apiRequest('/api/stall/sales-summary'),
 };
@@ -342,6 +378,14 @@ export const printApi = {
     businessInfo?: any;
   }) =>
     apiRequest('/api/print/receipt', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  printCartReceipt: (data: {
+    cartSaleData: any;
+    businessInfo?: any;
+  }) =>
+    apiRequest('/api/print/cart-receipt', {
       method: 'POST',
       body: JSON.stringify(data),
     }),

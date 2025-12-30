@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { SalesLog } from '@/types';
+import { Transaction } from '@/types';
 import { stallApi, printApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
@@ -24,19 +24,19 @@ import {
 import { Receipt } from '@/components/stall/Receipt';
 
 export default function SalesHistoryPage() {
-  const [sales, setSales] = useState<SalesLog[]>([]);
+  const [sales, setSales] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSale, setSelectedSale] = useState<SalesLog | null>(null);
+  const [selectedSale, setSelectedSale] = useState<Transaction | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [printing, setPrinting] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const handlePrint = async (sale: SalesLog) => {
+  const handlePrint = async (sale: Transaction) => {
     setPrinting(true);
     try {
-      const result = await printApi.printReceipt({
-        saleData: sale,
+      const result = await printApi.printCartReceipt({
+        cartSaleData: sale,
         businessInfo: {
           name: 'Konma Xperience Centre',
           address: 'Block 60, Villa 14, Bollineni Hillside, Nookampalayam, Phase 1, Perumbakkam, Chennai, Tamil Nadu 600131',
@@ -73,20 +73,20 @@ export default function SalesHistoryPage() {
 
   const loadSales = async () => {
     setLoading(true);
-    const result = await stallApi.getSales();
+    const result = await stallApi.getTransactions();
     if (result.success && result.data) {
-      setSales(result.data as SalesLog[]);
+      setSales(result.data as Transaction[]);
     }
     setLoading(false);
   };
 
-  const handleViewDetails = (sale: SalesLog) => {
+  const handleViewDetails = (sale: Transaction) => {
     setSelectedSale(sale);
     setIsDialogOpen(true);
   };
 
   const totalSales = sales.reduce((sum, s) => sum + s.totalAmount, 0);
-  const totalItems = sales.reduce((sum, s) => sum + s.quantity, 0);
+  const totalItems = sales.reduce((sum, s) => sum + s.items.reduce((itemSum, item) => itemSum + item.quantity, 0), 0);
 
   return (
     <div>
@@ -156,8 +156,8 @@ export default function SalesHistoryPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>SKU Name</TableHead>
-                    <TableHead>Quantity</TableHead>
+                    <TableHead>Transaction ID</TableHead>
+                    <TableHead>Items</TableHead>
                     <TableHead>Total Amount</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead>Payment</TableHead>
@@ -169,10 +169,15 @@ export default function SalesHistoryPage() {
                   {sales.map((sale) => (
                     <TableRow key={sale._id}>
                       <TableCell>
-                        <span className="font-medium">{sale.skuName}</span>
+                        <span className="font-mono text-sm">{sale.transactionId || sale._id.slice(-8)}</span>
                       </TableCell>
                       <TableCell>
-                        <span className="font-semibold text-lg">{sale.quantity}</span>
+                        <div>
+                          <span className="font-semibold text-lg">{sale.items.length}</span>
+                          <span className="text-sm text-muted-foreground ml-1">
+                            ({sale.items.reduce((sum, item) => sum + item.quantity, 0)} items)
+                          </span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <span className="font-semibold text-primary">₹{sale.totalAmount.toFixed(2)}</span>
@@ -239,23 +244,19 @@ export default function SalesHistoryPage() {
               <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                 <div>
                   <p className="text-xs text-muted-foreground">Transaction ID</p>
-                  <p className="text-sm font-mono">{selectedSale._id}</p>
+                  <p className="text-sm font-mono">{selectedSale.transactionId || selectedSale._id}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Date & Time</p>
                   <p className="text-sm">{new Date(selectedSale.createdAt).toLocaleString('en-IN')}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Item</p>
-                  <p className="text-sm font-semibold">{selectedSale.skuName}</p>
+                  <p className="text-xs text-muted-foreground">Items Count</p>
+                  <p className="text-sm font-semibold">{selectedSale.items.length} different items</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Quantity</p>
-                  <p className="text-sm font-semibold">{selectedSale.quantity}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Unit Price</p>
-                  <p className="text-sm">₹{selectedSale.price.toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">Total Quantity</p>
+                  <p className="text-sm font-semibold">{selectedSale.items.reduce((sum, item) => sum + item.quantity, 0)} items</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Total Amount</p>
@@ -283,6 +284,25 @@ export default function SalesHistoryPage() {
                 )}
               </div>
 
+              {/* Items List */}
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Items in this Transaction</h3>
+                <div className="space-y-2">
+                  {selectedSale.items.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="font-medium">{item.skuName}</p>
+                        <p className="text-sm text-muted-foreground">₹{item.unitPrice.toFixed(2)} each</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{item.quantity}x</p>
+                        <p className="text-sm font-bold text-primary">₹{item.itemTotal.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Receipt Preview */}
               <div>
                 <div className="flex justify-between items-center mb-4">
@@ -299,17 +319,7 @@ export default function SalesHistoryPage() {
                 </div>
                 <Receipt
                   ref={receiptRef}
-                  saleData={{
-                    skuName: selectedSale.skuName,
-                    quantity: selectedSale.quantity,
-                    price: selectedSale.price,
-                    totalAmount: selectedSale.totalAmount,
-                    soldBy: selectedSale.soldBy,
-                    customerName: selectedSale.customerName,
-                    customerPhone: selectedSale.customerPhone,
-                    paymentMethod: selectedSale.paymentMethod,
-                    createdAt: selectedSale.createdAt
-                  }}
+                  cartSaleData={selectedSale}
                 />
               </div>
             </div>

@@ -140,6 +140,59 @@ export interface SalesLog {
   createdAt: string;
 }
 
+export interface CartItem {
+  sku: SkuItem;
+  quantity: number;
+}
+
+export interface CartSaleItem {
+  skuId: string;
+  skuName: string;
+  quantity: number;
+  price: number;
+  itemTotal: number;
+}
+
+// UNIFIED TRANSACTION TYPE (NEW - single source of truth)
+export interface TransactionItem {
+  skuId: string;
+  skuName: string;
+  quantity: number;
+  unitPrice: number;
+  itemTotal: number;
+}
+
+export interface Transaction {
+  _id: string;
+  transactionId: string;
+  items: TransactionItem[];
+  totalAmount: number;
+  itemCount: number;
+  soldBy: string;
+  customerName?: string;
+  customerPhone?: string;
+  paymentMethod: 'cash' | 'upi' | 'card' | 'other';
+  paymentTransactionId?: string;
+  transactionType: 'single_item' | 'cart';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// DEPRECATED - Use Transaction instead
+export interface CartSale {
+  _id: string;
+  items: CartSaleItem[];
+  totalAmount: number;
+  soldBy: string;
+  customerName?: string;
+  customerPhone?: string;
+  paymentMethod?: 'cash' | 'upi' | 'card' | 'other';
+  transactionId?: string;
+  salesLogIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Alert {
   _id: string;
   name: string;

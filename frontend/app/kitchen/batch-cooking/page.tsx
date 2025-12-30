@@ -149,7 +149,7 @@ export default function BatchCookingPage() {
                 <div className="flex flex-wrap gap-2">
                   {selectedRecipe.ingredients.map((ing, idx) => (
                     <Badge key={idx} variant="outline">
-                      {ing.rawIngredientName}: {ing.quantity * multiplier} {ing.unit}
+                      {ing.ingredientName}: {ing.quantity * multiplier} {ing.unit}
                     </Badge>
                   ))}
                 </div>

@@ -1,17 +1,22 @@
 'use client';
 
-import { forwardRef } from 'react';
+import React, { forwardRef } from 'react';
 
 interface ReceiptProps {
-  saleData: {
-    skuName: string;
-    quantity: number;
-    price: number;
+  cartSaleData: {
+    items: Array<{
+      skuId: string;
+      skuName: string;
+      quantity: number;
+      unitPrice: number;
+      itemTotal: number;
+    }>;
     totalAmount: number;
     soldBy: string;
     customerName?: string;
     customerPhone?: string;
     paymentMethod?: string;
+    transactionId?: string;
     createdAt: string;
   };
   businessInfo?: {
@@ -23,7 +28,7 @@ interface ReceiptProps {
 }
 
 export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
-  ({ saleData, businessInfo }, ref) => {
+  ({ cartSaleData, businessInfo }, ref) => {
     const defaultBusinessInfo = {
       name: businessInfo?.name || 'Konma Xperience Centre',
       address: businessInfo?.address || 'Block 60, Villa 14, Bollineni Hillside, Nookampalayam, Phase 1, Perumbakkam, Chennai, Tamil Nadu 600131',
@@ -84,20 +89,20 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
         {/* Receipt Title */}
         <div className="text-center mb-3 relative z-10">
           <h2 className="text-sm font-bold">SALES RECEIPT</h2>
-          <p className="text-[9px] mt-1">{formatDate(saleData.createdAt)}</p>
+          <p className="text-[9px] mt-1">{formatDate(cartSaleData.createdAt)}</p>
         </div>
 
         {/* Customer Information */}
-        {(saleData.customerName || saleData.customerPhone) && (
+        {(cartSaleData.customerName || cartSaleData.customerPhone) && (
           <div className="mb-3 text-[10px] space-y-1 relative z-10">
-            {saleData.customerName && (
+            {cartSaleData.customerName && (
               <p className="break-words">
-                <span className="font-semibold">Customer:</span> {saleData.customerName}
+                <span className="font-semibold">Customer:</span> {cartSaleData.customerName}
               </p>
             )}
-            {saleData.customerPhone && (
+            {cartSaleData.customerPhone && (
               <p className="break-words">
-                <span className="font-semibold">Phone:</span> {saleData.customerPhone}
+                <span className="font-semibold">Phone:</span> {cartSaleData.customerPhone}
               </p>
             )}
           </div>
@@ -111,24 +116,37 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           <table className="w-full text-[9px] table-fixed">
             <thead>
               <tr>
-                <th className="text-left pb-1 w-[45%] font-semibold">Item</th>
+                <th className="text-left pb-1 w-[5%] font-semibold">#</th>
+                <th className="text-left pb-1 w-[40%] font-semibold">Item</th>
                 <th className="text-center pb-1 w-[15%] font-semibold">Qty</th>
                 <th className="text-right pb-1 w-[40%] font-semibold">Amt</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td colSpan={3} className="py-0">
+                <td colSpan={4} className="py-0">
                   <div style={{ letterSpacing: '0.05em', fontSize: '9px' }}>
                     {'- - - - - - - - - - - - - -'}
                   </div>
                 </td>
               </tr>
-              <tr>
-                <td className="py-1 break-words w-[45%]">{saleData.skuName}</td>
-                <td className="text-center w-[15%]">{saleData.quantity}</td>
-                <td className="text-right w-[40%] font-semibold">₹{saleData.totalAmount.toFixed(2)}</td>
-              </tr>
+              {cartSaleData.items.map((item, index) => (
+                <React.Fragment key={`item-${index}`}>
+                  <tr>
+                    <td className="py-1 text-center w-[5%] font-semibold">{index + 1}</td>
+                    <td className="py-1 break-words w-[40%]">{item.skuName}</td>
+                    <td className="text-center w-[15%]">{item.quantity}</td>
+                    <td className="text-right w-[40%] font-semibold">₹{item.itemTotal.toFixed(2)}</td>
+                  </tr>
+                  {index < cartSaleData.items.length - 1 && (
+                    <tr>
+                      <td colSpan={4} className="py-1">
+                        <div style={{ height: '4px' }}></div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
             </tbody>
           </table>
         </div>
@@ -140,12 +158,18 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
         <div className="mb-3 space-y-2 relative z-10">
           <div className="flex justify-between text-sm font-bold">
             <span>TOTAL:</span>
-            <span>₹{saleData.totalAmount.toFixed(2)}</span>
+            <span>₹{cartSaleData.totalAmount.toFixed(2)}</span>
           </div>
-          {saleData.paymentMethod && (
+          {cartSaleData.paymentMethod && (
             <div className="flex justify-between text-[9px] mt-1">
               <span>Payment:</span>
-              <span className="uppercase font-semibold">{saleData.paymentMethod}</span>
+              <span className="uppercase font-semibold">{cartSaleData.paymentMethod}</span>
+            </div>
+          )}
+          {cartSaleData.transactionId && (
+            <div className="flex justify-between text-[9px] mt-1">
+              <span>Transaction:</span>
+              <span className="font-semibold">{cartSaleData.transactionId}</span>
             </div>
           )}
         </div>
@@ -155,9 +179,10 @@ export const Receipt = forwardRef<HTMLDivElement, ReceiptProps>(
           {'- - - - - - - - - - - - - -'}
         </div>
         <div className="pt-2 mt-2 text-center text-[9px] space-y-1 relative z-10">
-          <p className="break-words">Served by: {saleData.soldBy}</p>
+          <p className="break-words">Served by: {cartSaleData.soldBy}</p>
           <p className="mt-2">Thank you for your purchase!</p>
           <p className="mt-1 font-semibold">Please visit again</p>
+          <p className="mt-3 font-bold">Happy New Year!!!</p>
         </div>
 
       </div>
