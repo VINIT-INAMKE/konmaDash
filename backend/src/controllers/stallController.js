@@ -1,7 +1,7 @@
-import { receiveAtStall, recordSale } from '../services/inventoryService.js';
+import { receiveAtStall, recordSale, recordTransaction } from '../services/inventoryService.js';
 import SkuItem from '../models/SkuItem.js';
 import TransferLog from '../models/TransferLog.js';
-import SalesLog from '../models/SalesLog.js';
+import Transaction from '../models/Transaction.js';
 
 // Transfers - View only (no action needed, counter stock auto-updated by kitchen)
 export const getPendingTransfers = async (req, res) => {
@@ -59,7 +59,69 @@ export const createSale = async (req, res) => {
   }
 };
 
+// Unified transaction creation (handles both single and multi-item sales)
+export const createTransaction = async (req, res) => {
+  try {
+    const { items, customerName, customerPhone, paymentMethod, paymentTransactionId } = req.body;
+    
+    // Validate items
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Transaction must contain at least one item'
+      });
+    }
+
+    // Validate each item
+    for (const item of items) {
+      if (!item.skuId || !item.quantity || item.quantity <= 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Each item must have a valid skuId and positive quantity'
+        });
+      }
+    }
+
+    const result = await recordTransaction(
+      items,
+      req.user.username,
+      customerName,
+      customerPhone,
+      paymentMethod,
+      paymentTransactionId
+    );
+    
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+// Legacy endpoint for backward compatibility
+export const createCartSale = async (req, res) => {
+  // Transform legacy request format to unified format
+  const { cartItems, transactionId, ...rest } = req.body;
+  const unifiedRequest = {
+    ...req,
+    body: {
+      items: cartItems,
+      paymentTransactionId: transactionId,
+      ...rest
+    }
+  };
+  
+  // Use unified transaction system
+  return createTransaction(unifiedRequest, res);
+};
+
+// Legacy endpoint - redirects to unified transactions
 export const getSales = async (req, res) => {
+  // For backward compatibility, redirect to transactions
+  return getTransactions(req, res);
+};
+
+// Unified transactions endpoint (replaces both getSales and getCartSales)
+export const getTransactions = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const filter = {};
@@ -70,25 +132,34 @@ export const getSales = async (req, res) => {
       if (endDate) filter.createdAt.$lte = new Date(endDate);
     }
 
-    const sales = await SalesLog.find(filter)
-      .populate('skuId')
+    const transactions = await Transaction.find(filter)
       .sort({ createdAt: -1 })
       .limit(100);
-    res.json({ success: true, data: sales });
+
+    res.json({ success: true, data: transactions });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 };
 
+// Legacy endpoint for backward compatibility
+export const getCartSales = async (req, res) => {
+  // Redirect to unified transactions
+  return getTransactions(req, res);
+};
+
 export const getSalesSummary = async (req, res) => {
   try {
-    const summary = await SalesLog.aggregate([
+    // Use unified Transaction model instead of SalesLog
+    const summary = await Transaction.aggregate([
+      // Unwind items array to get individual item data
+      { $unwind: '$items' },
       {
         $group: {
-          _id: '$skuId',
-          skuName: { $first: '$skuName' },
-          totalQuantity: { $sum: '$quantity' },
-          totalRevenue: { $sum: '$totalAmount' },
+          _id: '$items.skuId',
+          skuName: { $first: '$items.skuName' },
+          totalQuantity: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: '$items.itemTotal' },
           salesCount: { $sum: 1 }
         }
       },

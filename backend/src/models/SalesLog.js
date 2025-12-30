@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+// DEPRECATED: Use Transaction model instead
+// This model is kept for legacy compatibility only
 const salesLogSchema = new mongoose.Schema({
   skuId: {
     type: mongoose.Schema.Types.ObjectId,

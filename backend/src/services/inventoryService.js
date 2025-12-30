@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import RawIngredient from '../models/RawIngredient.js';
 import SemiProcessedItem from '../models/SemiProcessedItem.js';
 import SemiProcessedRecipe from '../models/SemiProcessedRecipe.js';
@@ -5,7 +6,7 @@ import SkuItem from '../models/SkuItem.js';
 import SkuRecipe from '../models/SkuRecipe.js';
 import BatchCookingLog from '../models/BatchCookingLog.js';
 import TransferLog from '../models/TransferLog.js';
-import SalesLog from '../models/SalesLog.js';
+import Transaction from '../models/Transaction.js';
 import PurchasedGood from '../models/PurchasedGood.js';
 import { logActivity } from './logService.js';
 
@@ -550,61 +551,34 @@ export const receiveAtStall = async (transferId, receivedBy = 'Stall Staff') => 
  * Record a sale at the stall
  * Deducts from stall stock
  */
+// Legacy function - now uses unified transaction system
 export const recordSale = async (skuId, quantity, soldBy = 'Stall Staff', customerName = '', customerPhone = '', paymentMethod = 'cash', transactionId = '') => {
+  // Convert single sale to transaction format
+  const items = [{ skuId, quantity }];
+  
+  const result = await recordTransaction(items, soldBy, customerName, customerPhone, paymentMethod, transactionId);
+  
+  // Get remaining stock for legacy compatibility
   const sku = await SkuItem.findById(skuId);
-  if (!sku) {
-    throw new Error('SKU item not found');
-  }
-
-  if (sku.currentStallStock < quantity) {
-    throw new Error(
-      `Insufficient stock at stall: need ${quantity}, have ${sku.currentStallStock}`
-    );
-  }
-
-  // Deduct from stall stock
-  sku.currentStallStock -= quantity;
-  await sku.save();
-
-  // Create sales log
-  const sale = new SalesLog({
-    skuId,
-    skuName: sku.name,
-    quantity,
-    price: sku.price,
-    totalAmount: sku.price * quantity,
-    soldBy,
-    customerName,
-    customerPhone,
-    paymentMethod,
-    transactionId
-  });
-  await sale.save();
-
-  // Log activity
-  await logActivity(
-    'SALE_RECORDED',
-    'STALL',
-    `Sold ${quantity} ${sku.name} for ₹${sku.price * quantity}`,
-    {
-      saleId: sale._id,
-      skuId,
-      skuName: sku.name,
-      quantity,
-      price: sku.price,
-      totalAmount: sku.price * quantity,
-      customerName,
-      customerPhone,
-      paymentMethod,
-      remainingStock: sku.currentStallStock
-    },
-    soldBy
-  );
-
+  
+  // Return in legacy format for backward compatibility
   return {
-    success: true,
-    sale,
-    remainingStock: sku.currentStallStock
+    success: result.success,
+    sale: {
+      _id: result.transaction._id,
+      skuId,
+      skuName: result.transaction.items[0].skuName,
+      quantity,
+      price: result.transaction.items[0].unitPrice,
+      totalAmount: result.transaction.items[0].itemTotal,
+      soldBy: result.transaction.soldBy,
+      customerName: result.transaction.customerName,
+      customerPhone: result.transaction.customerPhone,
+      paymentMethod: result.transaction.paymentMethod,
+      transactionId: result.transaction.transactionId,
+      createdAt: result.transaction.createdAt
+    },
+    remainingStock: sku?.currentStallStock || 0
   };
 };
 
@@ -676,5 +650,130 @@ export const checkSemiProcessedAvailability = async (skuId, quantity) => {
     allAvailable,
     hasRecipe: true,
     items: availability
+  };
+};
+
+/**
+ * Record a multi-item transaction at the stall (DEPRECATED - use recordTransaction)
+ * Legacy function for backward compatibility
+ */
+/**
+ * Record a unified transaction (handles both single and multi-item sales)
+ * Creates one Transaction record as the single source of truth
+ * All operations are atomic - either all succeed or all fail
+ */
+export const recordTransaction = async (items, soldBy = 'Stall Staff', customerName = '', customerPhone = '', paymentMethod = 'cash', paymentTransactionId = '') => {
+  // Validate items structure
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new Error('Transaction must contain at least one item');
+  }
+
+  // Validate each item
+  for (const item of items) {
+    if (!item.skuId || !item.quantity || typeof item.quantity !== 'number' || item.quantity < 1) {
+      throw new Error('Each item must have a valid skuId and quantity >= 1');
+    }
+  }
+
+  // Start a transaction for atomic operations
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const processedItems = [];
+    let totalAmount = 0;
+
+    // Process each item
+    for (const item of items) {
+      const { skuId, quantity } = item;
+
+      // Get SKU details
+      const sku = await SkuItem.findById(skuId).session(session);
+      if (!sku) {
+        throw new Error(`SKU item not found: ${skuId}`);
+      }
+
+      if (sku.currentStallStock < quantity) {
+        throw new Error(
+          `Insufficient stock for ${sku.name}: need ${quantity}, have ${sku.currentStallStock}`
+        );
+      }
+
+      // Deduct from stall stock
+      sku.currentStallStock -= quantity;
+      await sku.save({ session });
+
+      const itemTotal = sku.price * quantity;
+      totalAmount += itemTotal;
+
+      processedItems.push({
+        skuId,
+        skuName: sku.name,
+        quantity,
+        unitPrice: sku.price,
+        itemTotal
+      });
+    }
+
+    // Determine transaction type
+    const transactionType = items.length === 1 ? 'single_item' : 'cart';
+
+    // Create unified transaction record
+    const transaction = new Transaction({
+      items: processedItems,
+      totalAmount,
+      soldBy,
+      customerName,
+      customerPhone,
+      paymentMethod,
+      paymentTransactionId: paymentTransactionId || '',
+      transactionType
+    });
+    await transaction.save({ session });
+
+    // Log activity for the transaction
+    await logActivity(
+      'SALE_RECORDED',
+      'STALL',
+      `Sold ${processedItems.length} different items (${processedItems.map(i => `${i.quantity}x ${i.skuName}`).join(', ')}) for ₹${totalAmount}`,
+      {
+        transactionId: transaction.transactionId,
+        totalAmount,
+        itemCount: items.length,
+        transactionType
+      },
+      soldBy
+    );
+
+    // Commit the transaction
+    await session.commitTransaction();
+
+    return {
+      success: true,
+      transaction,
+      totalAmount,
+      itemCount: items.length
+    };
+
+  } catch (error) {
+    // Rollback the transaction
+    await session.abortTransaction();
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+// Legacy function - now uses unified transaction system
+export const recordCartSale = async (cartItems, soldBy = 'Stall Staff', customerName = '', customerPhone = '', paymentMethod = 'cash', transactionId = '') => {
+  // Use the unified transaction system
+  const result = await recordTransaction(cartItems, soldBy, customerName, customerPhone, paymentMethod, transactionId);
+  
+  // Return in legacy format for backward compatibility
+  return {
+    success: result.success,
+    cartSale: result.transaction, // Return transaction as cartSale for legacy compatibility
+    totalAmount: result.totalAmount,
+    itemCount: result.itemCount
   };
 };

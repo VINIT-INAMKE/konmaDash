@@ -5,7 +5,11 @@ import {
   receiveTransfer,
   getStallInventory,
   createSale,
+  createCartSale,
+  createTransaction,
   getSales,
+  getCartSales,
+  getTransactions,
   getSalesSummary
 } from '../controllers/stallController.js';
 import { authenticate, requireStall } from '../middleware/authMiddleware.js';
@@ -23,9 +27,15 @@ router.post('/receive-transfer/:id', receiveTransfer);  // Deprecated
 // Inventory
 router.get('/inventory', getStallInventory);
 
-// Sales
+// Unified Transactions (NEW - single source of truth)
+router.post('/transaction', createTransaction);
+router.get('/transactions', getTransactions);
+
+// Legacy Sales endpoints (for backward compatibility)
 router.post('/sale', createSale);
+router.post('/cart-sale', createCartSale);
 router.get('/sales', getSales);
+router.get('/cart-sales', getCartSales);
 router.get('/sales-summary', getSalesSummary);
 
 export default router;
