@@ -22,7 +22,16 @@ import {
   getAllSkuRecipes,
   getSkuRecipe,
   updateSkuRecipe,
-  deleteSkuRecipe
+  deleteSkuRecipe,
+  createPurchasedGood,
+  getAllPurchasedGoods,
+  getPurchasedGood,
+  updatePurchasedGood,
+  deletePurchasedGood,
+  replenishPurchasedGood,
+  sendToCounter,
+  getExpiringBatchesAlert,
+  cleanupExpiredBatches
 } from '../controllers/adminController.js';
 import { authenticate, requireAdmin } from '../middleware/authMiddleware.js';
 
@@ -60,5 +69,20 @@ router.get('/sku-recipes', authenticate, getAllSkuRecipes); // Kitchen needs to 
 router.get('/sku-recipes/by-sku/:skuId', authenticate, getSkuRecipe);
 router.put('/sku-recipes/by-sku/:skuId', authenticate, requireAdmin, updateSkuRecipe);
 router.delete('/sku-recipes/by-sku/:skuId', authenticate, requireAdmin, deleteSkuRecipe);
+
+// Purchased Goods - Admin only for modifications, all can view
+router.post('/purchased-goods', authenticate, requireAdmin, createPurchasedGood);
+router.get('/purchased-goods', authenticate, getAllPurchasedGoods); // All authenticated users can view
+router.get('/purchased-goods/:id', authenticate, getPurchasedGood);
+router.put('/purchased-goods/:id', authenticate, requireAdmin, updatePurchasedGood);
+router.delete('/purchased-goods/:id', authenticate, requireAdmin, deletePurchasedGood);
+
+// Purchased Goods - Stock Management
+router.post('/purchased-goods/:id/replenish', authenticate, requireAdmin, replenishPurchasedGood);
+router.post('/purchased-goods/:id/send-to-counter', authenticate, requireAdmin, sendToCounter);
+
+// Expiry Alerts - All authenticated users can view
+router.get('/expiry/batches', authenticate, getExpiringBatchesAlert); // Query param: ?hours=4
+router.post('/expiry/cleanup', authenticate, requireAdmin, cleanupExpiredBatches); // Admin only
 
 export default router;

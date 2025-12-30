@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { SkuItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { DeleteAlertDialog } from './DeleteAlertDialog';
 
 interface SkuItemListProps {
   items: SkuItem[];
@@ -26,6 +28,10 @@ export function SkuItemList({
   onEdit,
   onDelete,
 }: SkuItemListProps) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    item: SkuItem | null;
+  }>({ open: false, item: null });
   if (loading) {
     return (
       <div className="w-full p-8 text-center text-muted-foreground">
@@ -43,6 +49,7 @@ export function SkuItemList({
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -100,15 +107,7 @@ export function SkuItemList({
                   <Button
                     size="sm"
                     variant="destructive"
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Are you sure you want to delete "${item.name}"? This action cannot be undone.`
-                        )
-                      ) {
-                        onDelete(item._id);
-                      }
-                    }}
+                    onClick={() => setDeleteDialog({ open: true, item })}
                   >
                     <Trash2 className="w-4 h-4 mr-1" />
                     Delete
@@ -120,5 +119,19 @@ export function SkuItemList({
         })}
       </TableBody>
     </Table>
+
+    {deleteDialog.item && (
+      <DeleteAlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, item: null })}
+        onConfirm={() => {
+          onDelete(deleteDialog.item!._id);
+          setDeleteDialog({ open: false, item: null });
+        }}
+        title="Delete SKU Item"
+        description={`Are you sure you want to delete "${deleteDialog.item.name}"? This action cannot be undone.`}
+      />
+    )}
+    </>
   );
 }

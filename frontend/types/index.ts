@@ -1,5 +1,15 @@
 // Type definitions for QSR Inventory Management System
 
+// Polymorphic ingredient reference - can be raw, semiProcessed, or purchasedGood
+export interface IngredientReference {
+  ingredientType: 'raw' | 'semiProcessed' | 'purchasedGood';
+  ingredientId: string;
+  ingredientRef: 'RawIngredient' | 'SemiProcessedItem' | 'PurchasedGood';
+  ingredientName: string;
+  quantity: number;
+  unit: string;
+}
+
 export interface RawIngredient {
   _id: string;
   name: string;
@@ -8,6 +18,9 @@ export interface RawIngredient {
   reorderLevel: number;
   canReplenish: boolean;
   imageUrl?: string;
+  supplier?: string;
+  category?: string;
+  notes?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -22,6 +35,7 @@ export interface SemiProcessedItem {
     batchId: string;
     quantity: number;
     createdAt: string;
+    expiresAt: string;
   }>;
   imageUrl?: string;
   createdAt?: string;
@@ -33,13 +47,27 @@ export interface SemiProcessedRecipe {
   outputName: string;
   outputQuantity: number;
   outputUnit: string;
-  ingredients: Array<{
-    rawIngredientId: string;
-    rawIngredientName: string;
-    quantity: number;
-    unit: string;
-  }>;
+  ingredients: IngredientReference[];
   instructions?: string;
+  level?: number;
+  holdingTimeHours?: number;
+  storageTemp?: 'chiller_2_4' | 'freezer_minus_18' | 'warm_30_32' | 'room_temp';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PurchasedGood {
+  _id: string;
+  name: string;
+  category: 'frozen_pastry' | 'dairy' | 'condiment' | 'topping' | 'other';
+  unit: string;
+  currentStock: number;
+  counterStock: number;
+  reorderLevel: number;
+  supplier?: string;
+  requiresPrep?: boolean;
+  prepInstructions?: string;
+  imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -53,6 +81,9 @@ export interface SkuItem {
   price: number;
   isActive: boolean;
   imageUrl?: string;
+  category?: 'bakery' | 'beverage' | 'food' | 'other';
+  requiresAssembly?: boolean;
+  assemblyLocation?: 'kitchen' | 'counter' | 'none';
   createdAt?: string;
   updatedAt?: string;
 }
@@ -61,12 +92,9 @@ export interface SkuRecipe {
   _id: string;
   skuId: string;
   skuName: string;
-  ingredients: Array<{
-    semiProcessedId: string;
-    semiProcessedName: string;
-    quantity: number;
-    unit: string;
-  }>;
+  hasRecipe?: boolean;
+  ingredients: IngredientReference[];
+  assemblyInstructions?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -78,12 +106,7 @@ export interface BatchCookingLog {
   quantityProduced: number;
   unit: string;
   batchId: string;
-  rawIngredientsUsed: Array<{
-    ingredientId: string;
-    ingredientName: string;
-    quantity: number;
-    unit: string;
-  }>;
+  ingredientsUsed: IngredientReference[];
   createdBy: string;
   createdAt: string;
 }
@@ -94,12 +117,7 @@ export interface TransferLog {
   skuId: string;
   skuName: string;
   quantity: number;
-  semiProcessedUsed: Array<{
-    itemId: string;
-    itemName: string;
-    quantity: number;
-    unit: string;
-  }>;
+  ingredientsUsed: IngredientReference[];
   sentAt: string;
   sentBy: string;
   receivedAt: string;
@@ -134,13 +152,25 @@ export interface Alert {
 
 export interface AvailabilityCheck {
   allAvailable: boolean;
+  hasRecipe?: boolean;
   items: Array<{
+    ingredientType?: 'raw' | 'semiProcessed' | 'purchasedGood';
     itemName: string;
     required: number;
     available: number;
+    expired?: number;
     unit: string;
     isAvailable: boolean;
   }>;
+}
+
+export interface ExpiringBatch {
+  itemName: string;
+  batchId: string;
+  quantity: number;
+  unit: string;
+  expiresAt: string;
+  isExpired: boolean;
 }
 
 export interface ActivityLog {

@@ -36,6 +36,12 @@ const semiProcessedItemSchema = new mongoose.Schema({
     createdAt: {
       type: Date,
       default: Date.now
+    },
+    expiresAt: {
+      type: Date,
+      required: true
+      // Calculated from createdAt + recipe.holdingTimeHours
+      // Used for food safety compliance - expired batches cannot be used
     }
   }],
   imageUrl: {

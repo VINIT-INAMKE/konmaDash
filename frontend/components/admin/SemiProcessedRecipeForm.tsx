@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { SemiProcessedRecipe, RawIngredient } from '@/types';
+import { useState } from 'react';
+import { SemiProcessedRecipe, IngredientReference } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,10 +13,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2 } from 'lucide-react';
-import { rawIngredientsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
+import { PolymorphicIngredientSelector } from './PolymorphicIngredientSelector';
 
 interface SemiProcessedRecipeFormProps {
   initialData?: SemiProcessedRecipe;
@@ -25,20 +23,12 @@ interface SemiProcessedRecipeFormProps {
   isLoading?: boolean;
 }
 
-interface IngredientRow {
-  rawIngredientId: string;
-  rawIngredientName: string;
-  quantity: number;
-  unit: string;
-}
-
 export function SemiProcessedRecipeForm({
   initialData,
   onSubmit,
   onCancel,
   isLoading = false,
 }: SemiProcessedRecipeFormProps) {
-  const [rawIngredients, setRawIngredients] = useState<RawIngredient[]>([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
@@ -46,65 +36,34 @@ export function SemiProcessedRecipeForm({
     outputQuantity: initialData?.outputQuantity || 0,
     outputUnit: initialData?.outputUnit || 'ml',
     instructions: initialData?.instructions || '',
+    holdingTimeHours: initialData?.holdingTimeHours || 24,
+    storageTemp: initialData?.storageTemp || 'chiller_2_4',
   });
 
-  const [ingredients, setIngredients] = useState<IngredientRow[]>(
-    initialData?.ingredients || [
-      { rawIngredientId: '', rawIngredientName: '', quantity: 0, unit: '' },
+  const [ingredients, setIngredients] = useState<IngredientReference[]>(
+    initialData?.ingredients?.map((ing) => ({
+      ...ing,
+      // Normalize ingredientId - extract _id if it's a populated object
+      ingredientId: typeof ing.ingredientId === 'object'
+        ? String((ing.ingredientId as any)._id || '')
+        : String(ing.ingredientId || ''),
+    })) || [
+      {
+        ingredientType: 'raw',
+        ingredientId: '',
+        ingredientRef: 'RawIngredient',
+        ingredientName: '',
+        quantity: 0,
+        unit: '',
+      },
     ]
   );
-
-  useEffect(() => {
-    loadRawIngredients();
-  }, []);
-
-  const loadRawIngredients = async () => {
-    const result = await rawIngredientsApi.getAll();
-    if (result.success && result.data) {
-      setRawIngredients(result.data as RawIngredient[]);
-    } else {
-      toast({
-        title: 'Error',
-        description: 'Failed to load raw ingredients',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const addIngredient = () => {
-    setIngredients([
-      ...ingredients,
-      { rawIngredientId: '', rawIngredientName: '', quantity: 0, unit: '' },
-    ]);
-  };
-
-  const removeIngredient = (index: number) => {
-    setIngredients(ingredients.filter((_, i) => i !== index));
-  };
-
-  const updateIngredient = (index: number, field: string, value: any) => {
-    const updated = [...ingredients];
-    if (field === 'rawIngredientId') {
-      const ingredient = rawIngredients.find((ri) => ri._id === value);
-      if (ingredient) {
-        updated[index] = {
-          ...updated[index],
-          rawIngredientId: value,
-          rawIngredientName: ingredient.name,
-          unit: ingredient.unit,
-        };
-      }
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
-    }
-    setIngredients(updated);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validation
-    if (ingredients.some((ing) => !ing.rawIngredientId || ing.quantity <= 0)) {
+    if (ingredients.some((ing) => !ing.ingredientId || ing.quantity <= 0)) {
       toast({
         title: 'Validation Error',
         description: 'All ingredients must have a selection and quantity > 0',
@@ -193,100 +152,66 @@ export function SemiProcessedRecipeForm({
             setFormData({ ...formData, instructions: e.target.value })
           }
           placeholder="Enter cooking instructions..."
-          rows={3}
+          rows={6}
+          className="resize-y whitespace-pre-wrap"
         />
       </div>
 
-      {/* Ingredients Section */}
-      <div className="space-y-4 pt-4 border-t">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <Label className="text-base font-semibold">Ingredients</Label>
-          <Button type="button" size="sm" onClick={addIngredient} className="w-full sm:w-auto">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Ingredient
-          </Button>
+      {/* Holding Time and Storage - Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="holdingTimeHours">
+            Shelf Life (Hours) <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            id="holdingTimeHours"
+            type="number"
+            min="1"
+            value={formData.holdingTimeHours}
+            onChange={(e) =>
+              setFormData({
+                ...formData,
+                holdingTimeHours: parseInt(e.target.value) || 24,
+              })
+            }
+            placeholder="e.g., 24, 48, 168"
+            required
+          />
+          <p className="text-xs text-muted-foreground">
+            24h for most items, 48h for gravies, 168h (7 days) for frozen items
+          </p>
         </div>
 
-        <div className="space-y-3">
-          {ingredients.map((ingredient, index) => (
-            <Card key={index}>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 gap-4">
-                  {/* Ingredient Select - Full width on mobile */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">
-                      Raw Ingredient <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={ingredient.rawIngredientId}
-                      onValueChange={(value) =>
-                        updateIngredient(index, 'rawIngredientId', value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue>
-                          {ingredient.rawIngredientId && ingredient.rawIngredientName
-                            ? `${ingredient.rawIngredientName} (${ingredient.unit})`
-                            : 'Select ingredient'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {rawIngredients.map((ri) => (
-                          <SelectItem key={ri._id} value={ri._id}>
-                            {ri.name} ({ri.unit})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Quantity and Unit in a row */}
-                  <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">
-                        Quantity <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={ingredient.quantity}
-                        onChange={(e) =>
-                          updateIngredient(
-                            index,
-                            'quantity',
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Unit</Label>
-                      <Input
-                        value={ingredient.unit}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="destructive"
-                      onClick={() => removeIngredient(index)}
-                      disabled={ingredients.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-2">
+          <Label htmlFor="storageTemp">
+            Storage Temperature <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={formData.storageTemp}
+            onValueChange={(value) =>
+              setFormData({ ...formData, storageTemp: value })
+            }
+          >
+            <SelectTrigger id="storageTemp">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="chiller_2_4">Chiller (2-4°C)</SelectItem>
+              <SelectItem value="freezer_minus_18">Freezer (-18°C)</SelectItem>
+              <SelectItem value="warm_30_32">Warm (30-32°C)</SelectItem>
+              <SelectItem value="room_temp">Room Temperature</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
+      {/* Ingredients - Polymorphic Selector */}
+      <PolymorphicIngredientSelector
+        ingredients={ingredients}
+        onChange={setIngredients}
+        allowedTypes={['raw', 'semiProcessed', 'purchasedGood']}
+        label="Ingredients"
+      />
 
       {/* Buttons */}
       <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">

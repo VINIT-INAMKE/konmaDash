@@ -31,6 +31,21 @@ const rawIngredientSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  supplier: {
+    type: String,
+    default: ''
+    // e.g., "Maddur", "Fortune Foods", "Local Dairy"
+  },
+  category: {
+    type: String,
+    default: ''
+    // e.g., "dairy", "chocolate", "spice", "vegetable", "protein"
+  },
+  notes: {
+    type: String,
+    default: ''
+    // e.g., "65% dark chocolate", "Full cream milk", "Organic"
+  },
   updatedAt: {
     type: Date,
     default: Date.now

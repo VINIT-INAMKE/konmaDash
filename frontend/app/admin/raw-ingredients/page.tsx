@@ -4,13 +4,20 @@ import { useState, useEffect } from 'react';
 import { RawIngredient } from '@/types';
 import { rawIngredientsApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, AlertTriangle } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Filter } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { RawIngredientForm } from '@/components/admin/RawIngredientForm';
 import { RawIngredientList } from '@/components/admin/RawIngredientList';
@@ -24,6 +31,7 @@ export default function RawIngredientsPage() {
   const [editingIngredient, setEditingIngredient] = useState<RawIngredient | null>(null);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -97,9 +105,13 @@ export default function RawIngredientsPage() {
     }
   };
 
-  const filteredIngredients = ingredients.filter((ingredient) =>
-    ingredient.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredIngredients = ingredients.filter((ingredient) => {
+    const matchesSearch = ingredient.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      categoryFilter === 'all' ||
+      (ingredient.category && ingredient.category.toLowerCase() === categoryFilter.toLowerCase());
+    return matchesSearch && matchesCategory;
+  });
 
   const lowStockCount = ingredients.filter(
     (ing) => ing.currentStock <= ing.reorderLevel
@@ -166,6 +178,30 @@ export default function RawIngredientsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
           />
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectValue placeholder="Filter by category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories ({ingredients.length})</SelectItem>
+              <SelectItem value="uncategorized">Uncategorized</SelectItem>
+              <SelectItem value="dairy">Dairy</SelectItem>
+              <SelectItem value="protein">Protein</SelectItem>
+              <SelectItem value="vegetable">Vegetable</SelectItem>
+              <SelectItem value="chocolate">Chocolate</SelectItem>
+              <SelectItem value="spice">Spice</SelectItem>
+              <SelectItem value="oil">Oil</SelectItem>
+              <SelectItem value="seasoning">Seasoning</SelectItem>
+              <SelectItem value="sweetener">Sweetener</SelectItem>
+              <SelectItem value="flavoring">Flavoring</SelectItem>
+              <SelectItem value="paste">Paste</SelectItem>
+              <SelectItem value="condiment">Condiment</SelectItem>
+              <SelectItem value="flour">Flour</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

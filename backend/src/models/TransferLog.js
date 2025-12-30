@@ -21,12 +21,24 @@ const transferLogSchema = new mongoose.Schema({
     required: true,
     min: 1
   },
-  semiProcessedUsed: [{
-    itemId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'SemiProcessedItem'
+  ingredientsUsed: [{
+    // POLYMORPHIC REFERENCE - can be raw, semiProcessed, or purchasedGood
+    ingredientType: {
+      type: String,
+      required: true,
+      enum: ['raw', 'semiProcessed', 'purchasedGood']
     },
-    itemName: {
+    ingredientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      refPath: 'ingredientsUsed.ingredientRef'
+    },
+    ingredientRef: {
+      type: String,
+      required: true,
+      enum: ['RawIngredient', 'SemiProcessedItem', 'PurchasedGood']
+    },
+    ingredientName: {
       type: String,
       required: true
     },

@@ -6,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface SkuItemFormProps {
   initialData?: SkuItem;
@@ -28,6 +35,9 @@ export function SkuItemForm({
     price: initialData?.price || 0,
     isActive: initialData?.isActive !== undefined ? initialData.isActive : true,
     imageUrl: initialData?.imageUrl || '',
+    category: initialData?.category || 'other',
+    requiresAssembly: initialData?.requiresAssembly !== false,
+    assemblyLocation: initialData?.assemblyLocation || 'kitchen',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,6 +74,74 @@ export function SkuItemForm({
         <p className="text-xs text-muted-foreground">
           Optional: URL to product image for display in sales interface
         </p>
+      </div>
+
+      {/* Category and Assembly Location - Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="category">
+            Category <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={formData.category}
+            onValueChange={(value) =>
+              setFormData({ ...formData, category: value as any })
+            }
+          >
+            <SelectTrigger id="category">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bakery">Bakery</SelectItem>
+              <SelectItem value="beverage">Beverage</SelectItem>
+              <SelectItem value="food">Food</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="assemblyLocation">
+            Assembly Location <span className="text-destructive">*</span>
+          </Label>
+          <Select
+            value={formData.assemblyLocation}
+            onValueChange={(value) =>
+              setFormData({ ...formData, assemblyLocation: value as any })
+            }
+          >
+            <SelectTrigger id="assemblyLocation">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="kitchen">Kitchen (Prep)</SelectItem>
+              <SelectItem value="counter">Counter (Assembly)</SelectItem>
+              <SelectItem value="none">None (Pre-Made)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Requires Assembly */}
+      <div className="flex items-start space-x-3 space-y-0">
+        <Checkbox
+          id="requiresAssembly"
+          checked={formData.requiresAssembly}
+          onCheckedChange={(checked) =>
+            setFormData({ ...formData, requiresAssembly: checked as boolean })
+          }
+        />
+        <div className="space-y-1 leading-none">
+          <Label
+            htmlFor="requiresAssembly"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Requires Assembly
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Check if this item needs to be assembled from ingredients
+          </p>
+        </div>
       </div>
 
       {/* Target SKUs and Current Stock - Grid on larger screens */}

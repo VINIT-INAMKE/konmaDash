@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { RawIngredient } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -11,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { DeleteAlertDialog } from './DeleteAlertDialog';
 
 interface RawIngredientListProps {
   ingredients: RawIngredient[];
@@ -25,6 +27,10 @@ export function RawIngredientList({
   onEdit,
   onDelete,
 }: RawIngredientListProps) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    ingredient: RawIngredient | null;
+  }>({ open: false, ingredient: null });
   if (loading) {
     return (
       <div className="w-full p-8 text-center text-muted-foreground">
@@ -42,6 +48,7 @@ export function RawIngredientList({
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -89,11 +96,7 @@ export function RawIngredientList({
                     Edit
                   </Button>
                   <Button
-                    onClick={() => {
-                      if (confirm(`Delete ${ingredient.name}?`)) {
-                        onDelete(ingredient._id);
-                      }
-                    }}
+                    onClick={() => setDeleteDialog({ open: true, ingredient })}
                     variant="destructive"
                     size="sm"
                   >
@@ -107,5 +110,19 @@ export function RawIngredientList({
         })}
       </TableBody>
     </Table>
+
+    {deleteDialog.ingredient && (
+      <DeleteAlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, ingredient: null })}
+        onConfirm={() => {
+          onDelete(deleteDialog.ingredient!._id);
+          setDeleteDialog({ open: false, ingredient: null });
+        }}
+        title="Delete Raw Ingredient"
+        description={`Are you sure you want to delete "${deleteDialog.ingredient.name}"? This action cannot be undone.`}
+      />
+    )}
+    </>
   );
 }

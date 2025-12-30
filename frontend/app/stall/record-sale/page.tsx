@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { SkuItem } from '@/types';
-import { skuItemsApi, stallApi } from '@/lib/api';
+import { skuItemsApi, stallApi, printApi } from '@/lib/api';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { ShoppingCart, AlertTriangle, Printer, Image as ImageIcon } from 'lucide-react';
 import { Receipt } from '@/components/stall/Receipt';
-import { useReactToPrint } from 'react-to-print';
 
 export default function RecordSalePage() {
   const [skus, setSkus] = useState<SkuItem[]>([]);
@@ -29,12 +28,46 @@ export default function RecordSalePage() {
   const [transactionId, setTransactionId] = useState('');
   const [loading, setLoading] = useState(false);
   const [lastSale, setLastSale] = useState<any>(null);
+  const [printing, setPrinting] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const handlePrint = useReactToPrint({
-    contentRef: receiptRef,
-  });
+  const handlePrint = async () => {
+    if (!lastSale) return;
+
+    setPrinting(true);
+    try {
+      const result = await printApi.printReceipt({
+        saleData: lastSale,
+        businessInfo: {
+          name: 'Konma Xperience Centre',
+          address: 'Block 60, Villa 14, Bollineni Hillside, Nookampalayam, Phase 1, Perumbakkam, Chennai, Tamil Nadu 600131',
+          phone: '7709262997',
+        }
+      });
+
+      if (result.success) {
+        toast({
+          title: 'Receipt Printed',
+          description: 'Receipt sent to thermal printer successfully',
+        });
+      } else {
+        toast({
+          title: 'Print Failed',
+          description: result.error || 'Failed to print receipt',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Print Error',
+        description: 'Could not connect to printer. Please check USB connection.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   useEffect(() => {
     loadSkus();
@@ -364,9 +397,9 @@ export default function RecordSalePage() {
           <Card className="p-4 sm:p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold">Last Sale Receipt</h2>
-              <Button onClick={handlePrint} variant="outline" size="sm">
+              <Button onClick={handlePrint} variant="outline" size="sm" disabled={printing}>
                 <Printer className="w-4 h-4 mr-2" />
-                Print Receipt
+                {printing ? 'Printing...' : 'Print Receipt'}
               </Button>
             </div>
             <div className="print:block">

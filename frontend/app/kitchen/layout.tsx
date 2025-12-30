@@ -15,6 +15,7 @@ import {
   X,
   LogOut,
   User,
+  ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
@@ -41,6 +42,11 @@ const kitchenLinks = [
     href: '/kitchen/inventory',
     label: 'Inventory',
     icon: Package,
+  },
+  {
+    href: '/admin/purchased-goods',
+    label: 'Purchased Goods',
+    icon: ShoppingCart,
   },
   {
     href: '/kitchen/alerts',

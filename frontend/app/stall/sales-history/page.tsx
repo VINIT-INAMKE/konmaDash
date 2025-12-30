@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { SalesLog } from '@/types';
-import { stallApi } from '@/lib/api';
+import { stallApi, printApi } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,18 +22,50 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Receipt } from '@/components/stall/Receipt';
-import { useReactToPrint } from 'react-to-print';
 
 export default function SalesHistoryPage() {
   const [sales, setSales] = useState<SalesLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSale, setSelectedSale] = useState<SalesLog | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const receiptRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
-  const handlePrint = useReactToPrint({
-    contentRef: receiptRef,
-  });
+  const handlePrint = async (sale: SalesLog) => {
+    setPrinting(true);
+    try {
+      const result = await printApi.printReceipt({
+        saleData: sale,
+        businessInfo: {
+          name: 'Konma Xperience Centre',
+          address: 'Block 60, Villa 14, Bollineni Hillside, Nookampalayam, Phase 1, Perumbakkam, Chennai, Tamil Nadu 600131',
+          phone: '7709262997',
+        }
+      });
+
+      if (result.success) {
+        toast({
+          title: 'Receipt Printed',
+          description: 'Receipt sent to thermal printer successfully',
+        });
+      } else {
+        toast({
+          title: 'Print Failed',
+          description: result.error || 'Failed to print receipt',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Print Error',
+        description: 'Could not connect to printer. Please check USB connection.',
+        variant: 'destructive',
+      });
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   useEffect(() => {
     loadSales();
@@ -156,14 +189,24 @@ export default function SalesHistoryPage() {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Button
-                          onClick={() => handleViewDetails(sale)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleViewDetails(sale)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            onClick={() => handlePrint(sale)}
+                            variant="default"
+                            size="sm"
+                            disabled={printing}
+                          >
+                            <Printer className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -244,9 +287,14 @@ export default function SalesHistoryPage() {
               <div>
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-semibold">Receipt Preview</h3>
-                  <Button onClick={handlePrint} variant="default" size="sm">
+                  <Button
+                    onClick={() => selectedSale && handlePrint(selectedSale)}
+                    variant="default"
+                    size="sm"
+                    disabled={printing}
+                  >
                     <Printer className="w-4 h-4 mr-2" />
-                    Print Receipt
+                    {printing ? 'Printing...' : 'Print Receipt'}
                   </Button>
                 </div>
                 <Receipt

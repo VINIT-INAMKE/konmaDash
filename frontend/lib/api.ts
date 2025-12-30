@@ -1,5 +1,5 @@
 // API Client for QSR Inventory Management System
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend.konma.store';
 
 // Get auth token from localStorage
 function getAuthToken(): string | null {
@@ -279,4 +279,70 @@ export const usersApi = {
     }),
   delete: (id: string) =>
     apiRequest(`/api/users/${id}`, { method: 'DELETE' }),
+};
+
+// ============================================================================
+// PURCHASED GOODS (Admin)
+// ============================================================================
+
+export const purchasedGoodsApi = {
+  getAll: (params?: { category?: string }) => {
+    const queryParams = new URLSearchParams();
+    if (params?.category) queryParams.append('category', params.category);
+    const queryString = queryParams.toString();
+    return apiRequest(`/api/admin/purchased-goods${queryString ? `?${queryString}` : ''}`);
+  },
+  getById: (id: string) => apiRequest(`/api/admin/purchased-goods/${id}`),
+  create: (data: any) =>
+    apiRequest('/api/admin/purchased-goods', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: any) =>
+    apiRequest(`/api/admin/purchased-goods/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiRequest(`/api/admin/purchased-goods/${id}`, { method: 'DELETE' }),
+  replenish: (id: string, quantity: number) =>
+    apiRequest(`/api/admin/purchased-goods/${id}/replenish`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity }),
+    }),
+  sendToCounter: (id: string, quantity: number) =>
+    apiRequest(`/api/admin/purchased-goods/${id}/send-to-counter`, {
+      method: 'POST',
+      body: JSON.stringify({ quantity }),
+    }),
+};
+
+// ============================================================================
+// EXPIRY ALERTS
+// ============================================================================
+
+export const expiryAlertsApi = {
+  getExpiringBatches: (hours?: number) => {
+    const queryParams = new URLSearchParams();
+    if (hours) queryParams.append('hours', hours.toString());
+    const queryString = queryParams.toString();
+    return apiRequest(`/api/admin/expiry/batches${queryString ? `?${queryString}` : ''}`);
+  },
+  cleanupExpiredBatches: () =>
+    apiRequest('/api/admin/expiry/cleanup', { method: 'POST' }),
+};
+
+// ============================================================================
+// THERMAL PRINTING
+// ============================================================================
+
+export const printApi = {
+  printReceipt: (data: {
+    saleData: any;
+    businessInfo?: any;
+  }) =>
+    apiRequest('/api/print/receipt', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };

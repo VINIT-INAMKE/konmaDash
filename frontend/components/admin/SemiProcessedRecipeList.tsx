@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { SemiProcessedRecipe } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { DeleteAlertDialog } from './DeleteAlertDialog';
 
 interface SemiProcessedRecipeListProps {
   recipes: SemiProcessedRecipe[];
@@ -26,6 +28,10 @@ export function SemiProcessedRecipeList({
   onEdit,
   onDelete,
 }: SemiProcessedRecipeListProps) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    recipe: SemiProcessedRecipe | null;
+  }>({ open: false, recipe: null });
   if (loading) {
     return (
       <div className="w-full p-8 text-center text-muted-foreground">
@@ -43,6 +49,7 @@ export function SemiProcessedRecipeList({
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -65,17 +72,17 @@ export function SemiProcessedRecipeList({
               <div className="flex flex-wrap gap-1">
                 {recipe.ingredients.map((ing, idx) => (
                   <Badge key={idx} variant="outline" className="text-xs">
-                    {ing.rawIngredientName}: {ing.quantity}
+                    {ing.ingredientName}: {ing.quantity}
                     {ing.unit}
                   </Badge>
                 ))}
               </div>
             </TableCell>
-            <TableCell>
+            <TableCell className="max-w-md">
               {recipe.instructions ? (
-                <span className="text-sm text-muted-foreground line-clamp-2">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
                   {recipe.instructions}
-                </span>
+                </p>
               ) : (
                 <span className="text-muted-foreground">-</span>
               )}
@@ -96,15 +103,7 @@ export function SemiProcessedRecipeList({
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Are you sure you want to delete recipe "${recipe.outputName}"? This action cannot be undone.`
-                      )
-                    ) {
-                      onDelete(recipe._id);
-                    }
-                  }}
+                  onClick={() => setDeleteDialog({ open: true, recipe })}
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
                   Delete
@@ -115,5 +114,19 @@ export function SemiProcessedRecipeList({
         ))}
       </TableBody>
     </Table>
+
+    {deleteDialog.recipe && (
+      <DeleteAlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, recipe: null })}
+        onConfirm={() => {
+          onDelete(deleteDialog.recipe!._id);
+          setDeleteDialog({ open: false, recipe: null });
+        }}
+        title="Delete Recipe"
+        description={`Are you sure you want to delete the recipe "${deleteDialog.recipe.outputName}"? This action cannot be undone.`}
+      />
+    )}
+    </>
   );
 }

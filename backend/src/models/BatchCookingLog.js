@@ -24,10 +24,22 @@ const batchCookingLogSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
-  rawIngredientsUsed: [{
+  ingredientsUsed: [{
+    // POLYMORPHIC REFERENCE - can be raw, semiProcessed, or purchasedGood
+    ingredientType: {
+      type: String,
+      required: true,
+      enum: ['raw', 'semiProcessed', 'purchasedGood']
+    },
     ingredientId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'RawIngredient'
+      required: true,
+      refPath: 'ingredientsUsed.ingredientRef'
+    },
+    ingredientRef: {
+      type: String,
+      required: true,
+      enum: ['RawIngredient', 'SemiProcessedItem', 'PurchasedGood']
     },
     ingredientName: {
       type: String,

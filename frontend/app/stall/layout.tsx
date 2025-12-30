@@ -39,6 +39,11 @@ const stallLinks = [
     icon: Package,
   },
   {
+    href: '/admin/purchased-goods',
+    label: 'Purchased Goods',
+    icon: Package,
+  },
+  {
     href: '/stall/transfer-history',
     label: 'Transfer History',
     icon: TrendingUp,

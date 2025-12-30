@@ -11,13 +11,30 @@ const skuRecipeSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  hasRecipe: {
+    type: Boolean,
+    required: true,
+    default: true
+    // false for simple purchased items that just need stock tracking (e.g., plain croissants)
+  },
   ingredients: [{
-    semiProcessedId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'SemiProcessedItem',
-      required: true
+    // POLYMORPHIC REFERENCE - can be raw, semiProcessed, or purchasedGood
+    ingredientType: {
+      type: String,
+      required: true,
+      enum: ['raw', 'semiProcessed', 'purchasedGood']
     },
-    semiProcessedName: {
+    ingredientId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      refPath: 'ingredients.ingredientRef'
+    },
+    ingredientRef: {
+      type: String,
+      required: true,
+      enum: ['RawIngredient', 'SemiProcessedItem', 'PurchasedGood']
+    },
+    ingredientName: {
       type: String,
       required: true
     },
@@ -28,10 +45,14 @@ const skuRecipeSchema = new mongoose.Schema({
     },
     unit: {
       type: String,
-      required: true,
-      enum: ['kg', 'g', 'ml', 'L', 'nos', 'pieces']
+      required: true
     }
-  }]
+  }],
+  assemblyInstructions: {
+    type: String,
+    default: ''
+    // e.g., "Bake croissant, cool 2 min, drizzle 20g chocolate"
+  }
 }, {
   timestamps: true
 });

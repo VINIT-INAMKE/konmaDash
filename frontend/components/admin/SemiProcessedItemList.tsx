@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { SemiProcessedItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { DeleteAlertDialog } from './DeleteAlertDialog';
 
 interface SemiProcessedItemListProps {
   items: SemiProcessedItem[];
@@ -26,6 +28,10 @@ export function SemiProcessedItemList({
   onEdit,
   onDelete,
 }: SemiProcessedItemListProps) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    item: SemiProcessedItem | null;
+  }>({ open: false, item: null });
   if (loading) {
     return (
       <div className="w-full p-8 text-center text-muted-foreground">
@@ -43,6 +49,7 @@ export function SemiProcessedItemList({
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
@@ -100,15 +107,7 @@ export function SemiProcessedItemList({
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Are you sure you want to delete "${item.name}"? This action cannot be undone.`
-                      )
-                    ) {
-                      onDelete(item._id);
-                    }
-                  }}
+                  onClick={() => setDeleteDialog({ open: true, item })}
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
                   Delete
@@ -119,5 +118,19 @@ export function SemiProcessedItemList({
         ))}
       </TableBody>
     </Table>
+
+    {deleteDialog.item && (
+      <DeleteAlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, item: null })}
+        onConfirm={() => {
+          onDelete(deleteDialog.item!._id);
+          setDeleteDialog({ open: false, item: null });
+        }}
+        title="Delete Semi-Processed Item"
+        description={`Are you sure you want to delete "${deleteDialog.item.name}"? This action cannot be undone.`}
+      />
+    )}
+    </>
   );
 }

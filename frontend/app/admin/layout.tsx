@@ -17,6 +17,7 @@ import {
   Users,
   LogOut,
   User,
+  ShoppingCart,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
@@ -33,6 +34,11 @@ const adminLinks = [
     href: '/admin/raw-ingredients',
     label: 'Raw Ingredients',
     icon: PackageOpen,
+  },
+  {
+    href: '/admin/purchased-goods',
+    label: 'Purchased Goods',
+    icon: ShoppingCart,
   },
   {
     href: '/admin/semi-processed-items',

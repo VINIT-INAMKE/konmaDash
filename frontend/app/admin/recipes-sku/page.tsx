@@ -56,8 +56,16 @@ export default function SkuRecipesPage() {
 
   const handleSubmit = async (data: Partial<SkuRecipe>) => {
     setSaving(true);
-    const result = editingRecipe
-      ? await skuRecipesApi.update(editingRecipe._id, data)
+
+    // Extract skuId string from potentially populated object
+    const skuId = editingRecipe?.skuId
+      ? typeof editingRecipe.skuId === 'object'
+        ? (editingRecipe.skuId as any)._id
+        : editingRecipe.skuId
+      : undefined;
+
+    const result = editingRecipe && skuId
+      ? await skuRecipesApi.update(String(skuId), data)
       : await skuRecipesApi.create(data);
 
     if (result.success) {

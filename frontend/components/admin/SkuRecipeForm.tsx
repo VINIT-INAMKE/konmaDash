@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SkuRecipe, SkuItem, SemiProcessedItem } from '@/types';
+import { SkuRecipe, SkuItem, IngredientReference } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,23 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2 } from 'lucide-react';
-import { skuItemsApi, semiProcessedItemsApi } from '@/lib/api';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { skuItemsApi } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
+import { PolymorphicIngredientSelector } from './PolymorphicIngredientSelector';
 
 interface SkuRecipeFormProps {
   initialData?: SkuRecipe;
   onSubmit: (data: Partial<SkuRecipe>) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
-}
-
-interface IngredientRow {
-  semiProcessedId: string;
-  semiProcessedName: string;
-  quantity: number;
-  unit: string;
 }
 
 export function SkuRecipeForm({
@@ -38,83 +32,65 @@ export function SkuRecipeForm({
   isLoading = false,
 }: SkuRecipeFormProps) {
   const [skuItems, setSkuItems] = useState<SkuItem[]>([]);
-  const [semiProcessedItems, setSemiProcessedItems] = useState<
-    SemiProcessedItem[]
-  >([]);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    skuId: initialData?.skuId || '',
+    // Handle populated skuId (object) vs string ID
+    skuId: typeof initialData?.skuId === 'object'
+      ? String((initialData.skuId as any)._id || '')
+      : String(initialData?.skuId || ''),
     skuName: initialData?.skuName || '',
+    hasRecipe: initialData?.hasRecipe !== false, // Default true
+    assemblyInstructions: initialData?.assemblyInstructions || '',
   });
 
-  const [ingredients, setIngredients] = useState<IngredientRow[]>(
-    initialData?.ingredients || [
-      { semiProcessedId: '', semiProcessedName: '', quantity: 0, unit: '' },
+  const [ingredients, setIngredients] = useState<IngredientReference[]>(
+    initialData?.ingredients?.map((ing) => ({
+      ...ing,
+      // Normalize ingredientId - extract _id if it's a populated object
+      ingredientId: typeof ing.ingredientId === 'object'
+        ? String((ing.ingredientId as any)._id || '')
+        : String(ing.ingredientId || ''),
+    })) || [
+      {
+        ingredientType: 'semiProcessed',
+        ingredientId: '',
+        ingredientRef: 'SemiProcessedItem',
+        ingredientName: '',
+        quantity: 0,
+        unit: '',
+      },
     ]
   );
 
   useEffect(() => {
-    loadData();
+    loadSkuItems();
   }, []);
 
-  const loadData = async () => {
-    const [skuResult, semiResult] = await Promise.all([
-      skuItemsApi.getAll(),
-      semiProcessedItemsApi.getAll(),
-    ]);
-
-    if (skuResult.success && skuResult.data) {
-      setSkuItems(skuResult.data as SkuItem[]);
-    }
-
-    if (semiResult.success && semiResult.data) {
-      setSemiProcessedItems(semiResult.data as SemiProcessedItem[]);
-    }
-
-    if (!skuResult.success || !semiResult.success) {
+  const loadSkuItems = async () => {
+    const result = await skuItemsApi.getAll();
+    if (result.success && result.data) {
+      // Ensure all SKU item IDs are strings
+      const normalizedItems = (result.data as SkuItem[]).map(item => ({
+        ...item,
+        _id: String(item._id)
+      }));
+      setSkuItems(normalizedItems);
+    } else {
       toast({
         title: 'Error',
-        description: 'Failed to load required data',
+        description: 'Failed to load SKU items',
         variant: 'destructive',
       });
     }
-  };
-
-  const addIngredient = () => {
-    setIngredients([
-      ...ingredients,
-      { semiProcessedId: '', semiProcessedName: '', quantity: 0, unit: '' },
-    ]);
-  };
-
-  const removeIngredient = (index: number) => {
-    setIngredients(ingredients.filter((_, i) => i !== index));
-  };
-
-  const updateIngredient = (index: number, field: string, value: any) => {
-    const updated = [...ingredients];
-    if (field === 'semiProcessedId') {
-      const item = semiProcessedItems.find((si) => si._id === value);
-      if (item) {
-        updated[index] = {
-          ...updated[index],
-          semiProcessedId: value,
-          semiProcessedName: item.name,
-          unit: item.unit,
-        };
-      }
-    } else {
-      updated[index] = { ...updated[index], [field]: value };
-    }
-    setIngredients(updated);
   };
 
   const handleSkuChange = (skuId: string) => {
     const sku = skuItems.find((s) => s._id === skuId);
     if (sku) {
       setFormData({
-        skuId,
+        ...formData,
+        skuId: String(skuId), // Ensure it's always a string
         skuName: sku.name,
       });
     }
@@ -133,9 +109,18 @@ export function SkuRecipeForm({
       return;
     }
 
-    if (
-      ingredients.some((ing) => !ing.semiProcessedId || ing.quantity <= 0)
-    ) {
+    // Check if skuId is malformed
+    if (String(formData.skuId).includes('[object')) {
+      toast({
+        title: 'System Error',
+        description: 'Invalid SKU ID format. Please refresh and try again.',
+        variant: 'destructive',
+      });
+      console.error('Malformed skuId:', formData.skuId);
+      return;
+    }
+
+    if (formData.hasRecipe && ingredients.some((ing) => !ing.ingredientId || ing.quantity <= 0)) {
       toast({
         title: 'Validation Error',
         description: 'All ingredients must have a selection and quantity > 0',
@@ -144,10 +129,23 @@ export function SkuRecipeForm({
       return;
     }
 
-    await onSubmit({
-      ...formData,
-      ingredients,
-    });
+    // Prepare submission data
+    const submitData: any = {
+      skuName: formData.skuName,
+      hasRecipe: formData.hasRecipe,
+      assemblyInstructions: formData.assemblyInstructions,
+      ingredients: formData.hasRecipe ? ingredients : [],
+    };
+
+    // Only include skuId for new recipes (not updates)
+    if (!initialData) {
+      // Ensure skuId is a string, not an object
+      submitData.skuId = typeof formData.skuId === 'object'
+        ? (formData.skuId as any)._id
+        : formData.skuId;
+    }
+
+    await onSubmit(submitData);
   };
 
   return (
@@ -180,96 +178,56 @@ export function SkuRecipeForm({
         )}
       </div>
 
-      {/* Ingredients Section */}
-      <div className="space-y-4 pt-4 border-t">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <Label className="text-base font-semibold">Recipe Ingredients</Label>
-          <Button type="button" size="sm" onClick={addIngredient} className="w-full sm:w-auto">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Ingredient
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {ingredients.map((ingredient, index) => (
-            <Card key={index}>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-1 gap-4">
-                  {/* Semi-Processed Item Select - Full width on mobile */}
-                  <div className="space-y-2">
-                    <Label className="text-xs font-medium">
-                      Semi-Processed Item <span className="text-destructive">*</span>
-                    </Label>
-                    <Select
-                      value={ingredient.semiProcessedId}
-                      onValueChange={(value) =>
-                        updateIngredient(index, 'semiProcessedId', value)
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue>
-                          {ingredient.semiProcessedId && ingredient.semiProcessedName
-                            ? `${ingredient.semiProcessedName} (${ingredient.unit})`
-                            : 'Select item'}
-                        </SelectValue>
-                      </SelectTrigger>
-                      <SelectContent>
-                        {semiProcessedItems.map((si) => (
-                          <SelectItem key={si._id} value={si._id}>
-                            {si.name} ({si.unit})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Quantity and Unit in a row */}
-                  <div className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">
-                        Quantity <span className="text-destructive">*</span>
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={ingredient.quantity}
-                        onChange={(e) =>
-                          updateIngredient(
-                            index,
-                            'quantity',
-                            parseFloat(e.target.value) || 0
-                          )
-                        }
-                        required
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="text-xs font-medium">Unit</Label>
-                      <Input
-                        value={ingredient.unit}
-                        disabled
-                        className="bg-muted"
-                      />
-                    </div>
-
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="destructive"
-                      onClick={() => removeIngredient(index)}
-                      disabled={ingredients.length === 1}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+      {/* Has Recipe Checkbox */}
+      <div className="flex items-center space-x-2">
+        <Checkbox
+          id="hasRecipe"
+          checked={formData.hasRecipe}
+          onCheckedChange={(checked) =>
+            setFormData({ ...formData, hasRecipe: checked as boolean })
+          }
+        />
+        <div className="grid gap-1.5 leading-none">
+          <Label
+            htmlFor="hasRecipe"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Has Recipe
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Uncheck for simple purchased items that don't require assembly (e.g., plain croissants)
+          </p>
         </div>
       </div>
+
+      {/* Assembly Instructions */}
+      {formData.hasRecipe && (
+        <div className="space-y-2">
+          <Label htmlFor="assemblyInstructions">
+            Assembly Instructions (Optional)
+          </Label>
+          <Textarea
+            id="assemblyInstructions"
+            value={formData.assemblyInstructions}
+            onChange={(e) =>
+              setFormData({ ...formData, assemblyInstructions: e.target.value })
+            }
+            placeholder="e.g., Bake croissant, cool 2 min, drizzle 20g chocolate..."
+            rows={6}
+            className="resize-y whitespace-pre-wrap"
+          />
+        </div>
+      )}
+
+      {/* Ingredients - Show only if hasRecipe is true */}
+      {formData.hasRecipe && (
+        <PolymorphicIngredientSelector
+          ingredients={ingredients}
+          onChange={setIngredients}
+          allowedTypes={['raw', 'semiProcessed', 'purchasedGood']}
+          label="Recipe Ingredients"
+        />
+      )}
 
       {/* Buttons */}
       <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">

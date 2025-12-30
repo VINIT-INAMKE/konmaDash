@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { SkuRecipe } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { DeleteAlertDialog } from './DeleteAlertDialog';
 
 interface SkuRecipeListProps {
   recipes: SkuRecipe[];
@@ -26,6 +28,10 @@ export function SkuRecipeList({
   onEdit,
   onDelete,
 }: SkuRecipeListProps) {
+  const [deleteDialog, setDeleteDialog] = useState<{
+    open: boolean;
+    recipe: SkuRecipe | null;
+  }>({ open: false, recipe: null });
   if (loading) {
     return (
       <div className="w-full p-8 text-center text-muted-foreground">
@@ -43,11 +49,13 @@ export function SkuRecipeList({
   }
 
   return (
+    <>
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>SKU Name</TableHead>
           <TableHead>Recipe Ingredients</TableHead>
+          <TableHead>Assembly Instructions</TableHead>
           <TableHead>Created</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -60,11 +68,20 @@ export function SkuRecipeList({
               <div className="flex flex-wrap gap-1">
                 {recipe.ingredients.map((ing, idx) => (
                   <Badge key={idx} variant="outline" className="text-xs">
-                    {ing.semiProcessedName}: {ing.quantity}
+                    {ing.ingredientName}: {ing.quantity}
                     {ing.unit}
                   </Badge>
                 ))}
               </div>
+            </TableCell>
+            <TableCell className="max-w-md">
+              {recipe.assemblyInstructions ? (
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                  {recipe.assemblyInstructions}
+                </p>
+              ) : (
+                <span className="text-muted-foreground">-</span>
+              )}
             </TableCell>
             <TableCell className="text-sm text-muted-foreground">
               {recipe.createdAt ? new Date(recipe.createdAt).toLocaleDateString() : '-'}
@@ -82,15 +99,7 @@ export function SkuRecipeList({
                 <Button
                   size="sm"
                   variant="destructive"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        `Are you sure you want to delete recipe for "${recipe.skuName}"? This action cannot be undone.`
-                      )
-                    ) {
-                      onDelete(recipe._id);
-                    }
-                  }}
+                  onClick={() => setDeleteDialog({ open: true, recipe })}
                 >
                   <Trash2 className="w-4 h-4 mr-1" />
                   Delete
@@ -101,5 +110,23 @@ export function SkuRecipeList({
         ))}
       </TableBody>
     </Table>
+
+    {deleteDialog.recipe && (
+      <DeleteAlertDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, recipe: null })}
+        onConfirm={() => {
+          // Extract skuId from potentially populated object
+          const skuId = typeof deleteDialog.recipe!.skuId === 'object'
+            ? (deleteDialog.recipe!.skuId as any)._id
+            : deleteDialog.recipe!.skuId;
+          onDelete(String(skuId));
+          setDeleteDialog({ open: false, recipe: null });
+        }}
+        title="Delete SKU Recipe"
+        description={`Are you sure you want to delete the recipe for "${deleteDialog.recipe.skuName}"? This action cannot be undone.`}
+      />
+    )}
+    </>
   );
 }

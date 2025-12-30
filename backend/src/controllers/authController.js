@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { logActivity } from '../services/logService.js';
 
 // Generate JWT token
 const generateToken = (userId) => {
@@ -59,19 +58,6 @@ export const login = async (req, res) => {
     // Generate token
     const token = generateToken(user._id);
 
-    // Log activity
-    await logActivity(
-      'USER_LOGIN',
-      'AUTH',
-      `User logged in: ${user.username}`,
-      {
-        userId: user._id,
-        username: user.username,
-        role: user.role
-      },
-      user.username
-    );
-
     // Return user data and token
     res.json({
       success: true,
@@ -111,18 +97,6 @@ export const verify = async (req, res) => {
 // Logout
 export const logout = async (req, res) => {
   try {
-    // Log activity
-    await logActivity(
-      'USER_LOGOUT',
-      'AUTH',
-      `User logged out: ${req.user.username}`,
-      {
-        userId: req.user._id,
-        username: req.user.username
-      },
-      req.user.username
-    );
-
     res.json({
       success: true,
       data: { message: 'Logged out successfully' }

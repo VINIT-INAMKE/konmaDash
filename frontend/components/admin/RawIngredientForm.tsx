@@ -34,6 +34,9 @@ export function RawIngredientForm({
     reorderLevel: initialData?.reorderLevel || 0,
     canReplenish: initialData?.canReplenish !== false,
     imageUrl: initialData?.imageUrl || '',
+    supplier: initialData?.supplier || '',
+    category: initialData?.category || '',
+    notes: initialData?.notes || '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -54,8 +57,56 @@ export function RawIngredientForm({
           required
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          placeholder="e.g., Chicken"
+          placeholder="e.g., Chicken, Milk Chocolate 65%, Full Cream Milk"
         />
+      </div>
+
+      {/* Supplier and Category - Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Supplier */}
+        <div className="space-y-2">
+          <Label htmlFor="supplier">Supplier / Brand</Label>
+          <Input
+            id="supplier"
+            type="text"
+            value={formData.supplier}
+            onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+            placeholder="e.g., Maddur, Local Dairy, Fortune Foods"
+          />
+          <p className="text-xs text-muted-foreground">
+            Brand or supplier name for tracking
+          </p>
+        </div>
+
+        {/* Category */}
+        <div className="space-y-2">
+          <Label htmlFor="category">Category</Label>
+          <Input
+            id="category"
+            type="text"
+            value={formData.category}
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            placeholder="e.g., dairy, spice, chocolate, vegetable"
+          />
+          <p className="text-xs text-muted-foreground">
+            For organizing and filtering ingredients
+          </p>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Input
+          id="notes"
+          type="text"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          placeholder="e.g., 65% cocoa content, Full cream milk, Organic"
+        />
+        <p className="text-xs text-muted-foreground">
+          Additional details like cocoa percentage, quality grade, etc.
+        </p>
       </div>
 
       {/* Image URL */}

@@ -6,11 +6,119 @@ import SkuRecipe from '../models/SkuRecipe.js';
 import BatchCookingLog from '../models/BatchCookingLog.js';
 import TransferLog from '../models/TransferLog.js';
 import SalesLog from '../models/SalesLog.js';
+import PurchasedGood from '../models/PurchasedGood.js';
 import { logActivity } from './logService.js';
 
 /**
+ * Helper: Get model class for a given ingredient type
+ */
+const getModelForType = (ingredientType) => {
+  switch (ingredientType) {
+    case 'raw':
+      return RawIngredient;
+    case 'semiProcessed':
+      return SemiProcessedItem;
+    case 'purchasedGood':
+      return PurchasedGood;
+    default:
+      throw new Error(`Unknown ingredient type: ${ingredientType}`);
+  }
+};
+
+/**
+ * Check if a batch has expired
+ */
+export const checkBatchExpiry = (batch) => {
+  return new Date() > new Date(batch.expiresAt);
+};
+
+/**
+ * Get batches expiring within X hours
+ */
+export const getExpiringBatches = async (hoursUntilExpiry = 4) => {
+  const expiryThreshold = new Date(Date.now() + hoursUntilExpiry * 60 * 60 * 1000);
+
+  const items = await SemiProcessedItem.find({
+    'batches.expiresAt': { $lte: expiryThreshold }
+  });
+
+  const expiring = [];
+  for (const item of items) {
+    for (const batch of item.batches) {
+      if (new Date(batch.expiresAt) <= expiryThreshold) {
+        expiring.push({
+          itemName: item.name,
+          batchId: batch.batchId,
+          quantity: batch.quantity,
+          unit: item.unit,
+          expiresAt: batch.expiresAt,
+          isExpired: checkBatchExpiry(batch)
+        });
+      }
+    }
+  }
+
+  return expiring;
+};
+
+/**
+ * Remove expired batches from semi-processed items
+ */
+export const removeExpiredBatches = async () => {
+  const items = await SemiProcessedItem.find({});
+  const removed = [];
+
+  for (const item of items) {
+    const originalBatchCount = item.batches.length;
+    let expiredQuantity = 0;
+
+    // Filter out expired batches
+    item.batches = item.batches.filter(batch => {
+      if (checkBatchExpiry(batch)) {
+        expiredQuantity += batch.quantity;
+        removed.push({
+          itemName: item.name,
+          batchId: batch.batchId,
+          quantity: batch.quantity,
+          unit: item.unit,
+          expiredAt: batch.expiresAt
+        });
+        return false;
+      }
+      return true;
+    });
+
+    // Update current stock
+    if (expiredQuantity > 0) {
+      item.currentStock = Math.max(0, item.currentStock - expiredQuantity);
+      item.updatedAt = new Date();
+      await item.save();
+    }
+
+    if (item.batches.length < originalBatchCount) {
+      await logActivity(
+        'BATCH_EXPIRED',
+        'SYSTEM',
+        `Removed ${originalBatchCount - item.batches.length} expired batch(es) of ${item.name}`,
+        {
+          itemName: item.name,
+          expiredQuantity,
+          unit: item.unit,
+          batchesRemoved: originalBatchCount - item.batches.length
+        },
+        'System'
+      );
+    }
+  }
+
+  return removed;
+};
+
+/**
  * Cook a batch of semi-processed items
- * Deducts raw ingredients and adds to semi-processed inventory
+ * Supports polymorphic ingredients (raw, semiProcessed, purchasedGood)
+ * Checks expiry for semi-processed batches
+ * Uses FIFO batch consumption
  */
 export const cookBatch = async (recipeId, multiplier = 1, createdBy = 'Kitchen Staff') => {
   const recipe = await SemiProcessedRecipe.findById(recipeId);
@@ -20,39 +128,123 @@ export const cookBatch = async (recipeId, multiplier = 1, createdBy = 'Kitchen S
 
   const quantityToProduce = recipe.outputQuantity * multiplier;
 
-  // Check raw ingredient availability
-  for (const ingredient of recipe.ingredients) {
-    const rawIngredient = await RawIngredient.findById(ingredient.rawIngredientId);
-    if (!rawIngredient) {
-      throw new Error(`Raw ingredient ${ingredient.rawIngredientName} not found`);
-    }
+  // Group ingredients by type
+  const ingredientsByType = {
+    raw: recipe.ingredients.filter(i => i.ingredientType === 'raw'),
+    semiProcessed: recipe.ingredients.filter(i => i.ingredientType === 'semiProcessed'),
+    purchasedGood: recipe.ingredients.filter(i => i.ingredientType === 'purchasedGood')
+  };
 
-    const requiredQty = ingredient.quantity * multiplier;
-    if (rawIngredient.currentStock < requiredQty) {
-      throw new Error(
-        `Insufficient ${ingredient.rawIngredientName}: need ${requiredQty}${ingredient.unit}, have ${rawIngredient.currentStock}${rawIngredient.unit}`
-      );
+  // Check availability for all ingredient types
+  for (const type in ingredientsByType) {
+    const ModelClass = getModelForType(type);
+
+    for (const ingredient of ingredientsByType[type]) {
+      const item = await ModelClass.findById(ingredient.ingredientId);
+      if (!item) {
+        throw new Error(`${ingredient.ingredientName} not found`);
+      }
+
+      const requiredQty = ingredient.quantity * multiplier;
+
+      // For semi-processed items, check expiry of batches
+      if (type === 'semiProcessed') {
+        // Remove expired batches first
+        const originalBatchCount = item.batches.length;
+        let expiredQuantity = 0;
+
+        item.batches = item.batches.filter(batch => {
+          if (checkBatchExpiry(batch)) {
+            expiredQuantity += batch.quantity;
+            return false;
+          }
+          return true;
+        });
+
+        if (expiredQuantity > 0) {
+          item.currentStock = Math.max(0, item.currentStock - expiredQuantity);
+        }
+
+        // Check if enough non-expired stock available
+        const availableStock = item.batches.reduce((sum, b) => sum + b.quantity, 0);
+        if (availableStock < requiredQty) {
+          throw new Error(
+            `Insufficient non-expired ${ingredient.ingredientName}: need ${requiredQty}${ingredient.unit}, have ${availableStock}${item.unit} (${expiredQuantity}${item.unit} expired)`
+          );
+        }
+      } else {
+        // For raw and purchased goods, simple stock check
+        if (item.currentStock < requiredQty) {
+          throw new Error(
+            `Insufficient ${ingredient.ingredientName}: need ${requiredQty}${ingredient.unit}, have ${item.currentStock}${item.unit}`
+          );
+        }
+      }
     }
   }
 
   // Generate batch ID
   const batchId = `BATCH-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-  // Deduct raw ingredients
-  const rawIngredientsUsed = [];
-  for (const ingredient of recipe.ingredients) {
-    const requiredQty = ingredient.quantity * multiplier;
-    await RawIngredient.findByIdAndUpdate(
-      ingredient.rawIngredientId,
-      { $inc: { currentStock: -requiredQty }, updatedAt: new Date() }
-    );
-    rawIngredientsUsed.push({
-      ingredientId: ingredient.rawIngredientId,
-      ingredientName: ingredient.rawIngredientName,
-      quantity: requiredQty,
-      unit: ingredient.unit
-    });
+  // Deduct ingredients and track usage
+  const ingredientsUsed = [];
+
+  for (const type in ingredientsByType) {
+    const ModelClass = getModelForType(type);
+
+    for (const ingredient of ingredientsByType[type]) {
+      const requiredQty = ingredient.quantity * multiplier;
+      const item = await ModelClass.findById(ingredient.ingredientId);
+
+      if (type === 'semiProcessed') {
+        // Use FIFO batch consumption for semi-processed
+        let remaining = requiredQty;
+        const batchesUsed = [];
+
+        // Sort batches by createdAt (FIFO)
+        item.batches.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        for (let i = 0; i < item.batches.length && remaining > 0; i++) {
+          const batch = item.batches[i];
+          const toUse = Math.min(batch.quantity, remaining);
+
+          batch.quantity -= toUse;
+          remaining -= toUse;
+
+          batchesUsed.push({
+            batchId: batch.batchId,
+            quantityUsed: toUse
+          });
+        }
+
+        // Remove empty batches
+        item.batches = item.batches.filter(b => b.quantity > 0);
+        item.currentStock -= requiredQty;
+        item.updatedAt = new Date();
+        await item.save();
+
+      } else {
+        // For raw and purchased goods, simple deduction
+        await ModelClass.findByIdAndUpdate(
+          ingredient.ingredientId,
+          { $inc: { currentStock: -requiredQty }, updatedAt: new Date() }
+        );
+      }
+
+      ingredientsUsed.push({
+        ingredientType: ingredient.ingredientType,
+        ingredientId: ingredient.ingredientId,
+        ingredientRef: ingredient.ingredientRef,
+        ingredientName: ingredient.ingredientName,
+        quantity: requiredQty,
+        unit: ingredient.unit
+      });
+    }
   }
+
+  // Calculate batch expiry time
+  const createdAt = new Date();
+  const expiresAt = new Date(createdAt.getTime() + recipe.holdingTimeHours * 60 * 60 * 1000);
 
   // Add to semi-processed inventory
   let semiProcessedItem = await SemiProcessedItem.findOne({ name: recipe.outputName });
@@ -67,7 +259,8 @@ export const cookBatch = async (recipeId, multiplier = 1, createdBy = 'Kitchen S
       batches: [{
         batchId,
         quantity: quantityToProduce,
-        createdAt: new Date()
+        createdAt,
+        expiresAt
       }]
     });
     await semiProcessedItem.save();
@@ -77,20 +270,21 @@ export const cookBatch = async (recipeId, multiplier = 1, createdBy = 'Kitchen S
     semiProcessedItem.batches.push({
       batchId,
       quantity: quantityToProduce,
-      createdAt: new Date()
+      createdAt,
+      expiresAt
     });
     semiProcessedItem.updatedAt = new Date();
     await semiProcessedItem.save();
   }
 
-  // Create batch cooking log
+  // Create batch cooking log with polymorphic ingredients
   const log = new BatchCookingLog({
     semiProcessedRecipeId: recipeId,
     outputName: recipe.outputName,
     quantityProduced: quantityToProduce,
     unit: recipe.outputUnit,
     batchId,
-    rawIngredientsUsed,
+    ingredientsUsed,
     createdBy
   });
   await log.save();
@@ -99,14 +293,16 @@ export const cookBatch = async (recipeId, multiplier = 1, createdBy = 'Kitchen S
   await logActivity(
     'BATCH_COOKED',
     'KITCHEN',
-    `Cooked ${quantityToProduce}${recipe.outputUnit} of ${recipe.outputName}`,
+    `Cooked ${quantityToProduce}${recipe.outputUnit} of ${recipe.outputName} (expires: ${expiresAt.toLocaleString()})`,
     {
       batchId,
       outputName: recipe.outputName,
       quantityProduced: quantityToProduce,
       unit: recipe.outputUnit,
       multiplier,
-      rawIngredientsUsed
+      holdingTimeHours: recipe.holdingTimeHours,
+      expiresAt,
+      ingredientsUsed
     },
     createdBy
   );
@@ -117,14 +313,15 @@ export const cookBatch = async (recipeId, multiplier = 1, createdBy = 'Kitchen S
     outputName: recipe.outputName,
     quantityProduced: quantityToProduce,
     unit: recipe.outputUnit,
+    expiresAt,
     log
   };
 };
 
 /**
  * Send SKUs to counter (SINGLE ACTION)
- * Deducts semi-processed inventory AND updates counter stock immediately
- * NO two-step process - counter stock available instantly
+ * Supports polymorphic ingredients and no-recipe SKUs
+ * Deducts inventory AND updates counter stock immediately
  */
 export const sendToStall = async (skuId, quantity, sentBy = 'Kitchen Staff') => {
   const sku = await SkuItem.findById(skuId);
@@ -133,40 +330,167 @@ export const sendToStall = async (skuId, quantity, sentBy = 'Kitchen Staff') => 
   }
 
   const skuRecipe = await SkuRecipe.findOne({ skuId });
-  if (!skuRecipe) {
-    throw new Error('SKU recipe not found');
+
+  // If no recipe or hasRecipe: false, just update counter stock
+  if (!skuRecipe || !skuRecipe.hasRecipe) {
+    await SkuItem.findByIdAndUpdate(
+      skuId,
+      {
+        $inc: { currentStallStock: quantity },
+        updatedAt: new Date()
+      }
+    );
+
+    // Log activity for no-recipe SKU
+    await logActivity(
+      'SENT_TO_COUNTER',
+      'KITCHEN',
+      `Sent ${quantity} ${sku.name} to counter (no recipe)`,
+      {
+        skuId,
+        skuName: sku.name,
+        quantity,
+        counterStock: sku.currentStallStock + quantity,
+        hasRecipe: false
+      },
+      sentBy
+    );
+
+    return {
+      success: true,
+      counterStock: sku.currentStallStock + quantity,
+      hasRecipe: false
+    };
   }
 
-  // Calculate semi-processed needed
-  const semiProcessedNeeded = skuRecipe.ingredients.map(ing => ({
-    itemId: ing.semiProcessedId,
-    itemName: ing.semiProcessedName,
-    quantity: ing.quantity * quantity,
-    unit: ing.unit
-  }));
+  // Group ingredients by type
+  const ingredientsByType = {
+    raw: skuRecipe.ingredients.filter(i => i.ingredientType === 'raw'),
+    semiProcessed: skuRecipe.ingredients.filter(i => i.ingredientType === 'semiProcessed'),
+    purchasedGood: skuRecipe.ingredients.filter(i => i.ingredientType === 'purchasedGood')
+  };
 
-  // Check semi-processed availability
-  for (const item of semiProcessedNeeded) {
-    const semiProcessed = await SemiProcessedItem.findById(item.itemId);
-    if (!semiProcessed) {
-      throw new Error(`Semi-processed item ${item.itemName} not found`);
+  // Check availability for all ingredient types
+  for (const type in ingredientsByType) {
+    const ModelClass = getModelForType(type);
+
+    for (const ingredient of ingredientsByType[type]) {
+      const item = await ModelClass.findById(ingredient.ingredientId);
+      if (!item) {
+        throw new Error(`${ingredient.ingredientName} not found`);
+      }
+
+      const requiredQty = ingredient.quantity * quantity;
+
+      // For purchased goods, check if counterStock is available first
+      if (type === 'purchasedGood' && item.counterStock !== undefined) {
+        const totalAvailable = item.currentStock + item.counterStock;
+        if (totalAvailable < requiredQty) {
+          throw new Error(
+            `Insufficient ${ingredient.ingredientName}: need ${requiredQty}${ingredient.unit}, have ${totalAvailable}${item.unit}`
+          );
+        }
+      } else if (type === 'semiProcessed') {
+        // For semi-processed, check non-expired batches
+        let expiredQuantity = 0;
+        const nonExpiredBatches = item.batches.filter(batch => {
+          if (checkBatchExpiry(batch)) {
+            expiredQuantity += batch.quantity;
+            return false;
+          }
+          return true;
+        });
+
+        const availableStock = nonExpiredBatches.reduce((sum, b) => sum + b.quantity, 0);
+        if (availableStock < requiredQty) {
+          throw new Error(
+            `Insufficient non-expired ${ingredient.ingredientName}: need ${requiredQty}${ingredient.unit}, have ${availableStock}${item.unit}`
+          );
+        }
+      } else {
+        // For raw ingredients and other types
+        if (item.currentStock < requiredQty) {
+          throw new Error(
+            `Insufficient ${ingredient.ingredientName}: need ${requiredQty}${ingredient.unit}, have ${item.currentStock}${item.unit}`
+          );
+        }
+      }
     }
-    if (semiProcessed.currentStock < item.quantity) {
-      throw new Error(
-        `Insufficient ${item.itemName}: need ${item.quantity}${item.unit}, have ${semiProcessed.currentStock}${semiProcessed.unit}`
-      );
+  }
+
+  // Deduct ingredients and track usage
+  const ingredientsUsed = [];
+
+  for (const type in ingredientsByType) {
+    const ModelClass = getModelForType(type);
+
+    for (const ingredient of ingredientsByType[type]) {
+      const requiredQty = ingredient.quantity * quantity;
+      const item = await ModelClass.findById(ingredient.ingredientId);
+
+      if (type === 'purchasedGood' && item.counterStock !== undefined) {
+        // For purchased goods, prefer counterStock if available
+        if (item.counterStock >= requiredQty) {
+          await ModelClass.findByIdAndUpdate(
+            ingredient.ingredientId,
+            { $inc: { counterStock: -requiredQty }, updatedAt: new Date() }
+          );
+        } else {
+          // Use counterStock first, then currentStock
+          const fromCounter = item.counterStock;
+          const fromMain = requiredQty - fromCounter;
+
+          await ModelClass.findByIdAndUpdate(
+            ingredient.ingredientId,
+            {
+              $inc: { counterStock: -fromCounter, currentStock: -fromMain },
+              updatedAt: new Date()
+            }
+          );
+        }
+      } else if (type === 'semiProcessed') {
+        // Use FIFO batch consumption for semi-processed
+        let remaining = requiredQty;
+
+        // Filter and sort non-expired batches by createdAt (FIFO)
+        const nonExpiredBatches = item.batches.filter(batch => !checkBatchExpiry(batch));
+        nonExpiredBatches.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+        // Use batches
+        for (let i = 0; i < nonExpiredBatches.length && remaining > 0; i++) {
+          const batch = nonExpiredBatches[i];
+          const toUse = Math.min(batch.quantity, remaining);
+
+          batch.quantity -= toUse;
+          remaining -= toUse;
+        }
+
+        // Remove empty and expired batches
+        item.batches = item.batches.filter(b => b.quantity > 0 && !checkBatchExpiry(b));
+        item.currentStock -= requiredQty;
+        item.updatedAt = new Date();
+        await item.save();
+
+      } else {
+        // For raw ingredients, simple deduction
+        await ModelClass.findByIdAndUpdate(
+          ingredient.ingredientId,
+          { $inc: { currentStock: -requiredQty }, updatedAt: new Date() }
+        );
+      }
+
+      ingredientsUsed.push({
+        ingredientType: ingredient.ingredientType,
+        ingredientId: ingredient.ingredientId,
+        ingredientRef: ingredient.ingredientRef,
+        ingredientName: ingredient.ingredientName,
+        quantity: requiredQty,
+        unit: ingredient.unit
+      });
     }
   }
 
-  // DEDUCT semi-processed inventory
-  for (const item of semiProcessedNeeded) {
-    const semiProcessed = await SemiProcessedItem.findById(item.itemId);
-    semiProcessed.currentStock -= item.quantity;
-    semiProcessed.updatedAt = new Date();
-    await semiProcessed.save();
-  }
-
-  // UPDATE COUNTER STOCK IMMEDIATELY (single action)
+  // UPDATE COUNTER STOCK IMMEDIATELY
   await SkuItem.findByIdAndUpdate(
     skuId,
     {
@@ -175,17 +499,17 @@ export const sendToStall = async (skuId, quantity, sentBy = 'Kitchen Staff') => 
     }
   );
 
-  // Create transfer log for audit trail only
+  // Create transfer log with polymorphic ingredients
   const transfer = new TransferLog({
-    status: 'completed',  // Instantly completed, no pending state
+    status: 'completed',
     skuId,
     skuName: sku.name,
     quantity,
-    semiProcessedUsed: semiProcessedNeeded,
+    ingredientsUsed,
     sentAt: new Date(),
     sentBy,
-    receivedAt: new Date(),  // Same time - instant
-    receivedBy: 'Auto'  // Automatic
+    receivedAt: new Date(),
+    receivedBy: 'Auto'
   });
   await transfer.save();
 
@@ -199,7 +523,7 @@ export const sendToStall = async (skuId, quantity, sentBy = 'Kitchen Staff') => 
       skuName: sku.name,
       quantity,
       counterStock: sku.currentStallStock + quantity,
-      semiProcessedUsed: semiProcessedNeeded
+      ingredientsUsed
     },
     sentBy
   );
@@ -285,7 +609,8 @@ export const recordSale = async (skuId, quantity, soldBy = 'Stall Staff', custom
 };
 
 /**
- * Check if enough semi-processed items are available for a transfer
+ * Check if enough ingredients are available for a SKU transfer
+ * Supports polymorphic ingredients
  */
 export const checkSemiProcessedAvailability = async (skuId, quantity) => {
   const skuRecipe = await SkuRecipe.findOne({ skuId });
@@ -293,20 +618,51 @@ export const checkSemiProcessedAvailability = async (skuId, quantity) => {
     throw new Error('SKU recipe not found');
   }
 
+  // If no recipe, return true
+  if (!skuRecipe.hasRecipe || !skuRecipe.ingredients || skuRecipe.ingredients.length === 0) {
+    return {
+      allAvailable: true,
+      hasRecipe: false,
+      items: []
+    };
+  }
+
   const availability = [];
   let allAvailable = true;
 
   for (const ingredient of skuRecipe.ingredients) {
     const required = ingredient.quantity * quantity;
-    const semiProcessed = await SemiProcessedItem.findById(ingredient.semiProcessedId);
+    const ModelClass = getModelForType(ingredient.ingredientType);
+    const item = await ModelClass.findById(ingredient.ingredientId);
 
-    const available = semiProcessed ? semiProcessed.currentStock : 0;
+    let available = 0;
+    let expired = 0;
+
+    if (item) {
+      if (ingredient.ingredientType === 'semiProcessed') {
+        // For semi-processed, calculate non-expired stock
+        const nonExpiredBatches = item.batches.filter(batch => !checkBatchExpiry(batch));
+        available = nonExpiredBatches.reduce((sum, b) => sum + b.quantity, 0);
+
+        const expiredBatches = item.batches.filter(batch => checkBatchExpiry(batch));
+        expired = expiredBatches.reduce((sum, b) => sum + b.quantity, 0);
+      } else if (ingredient.ingredientType === 'purchasedGood' && item.counterStock !== undefined) {
+        // For purchased goods, include both main and counter stock
+        available = item.currentStock + item.counterStock;
+      } else {
+        // For raw ingredients
+        available = item.currentStock;
+      }
+    }
+
     const isAvailable = available >= required;
 
     availability.push({
-      itemName: ingredient.semiProcessedName,
+      ingredientType: ingredient.ingredientType,
+      itemName: ingredient.ingredientName,
       required,
       available,
+      expired: expired || 0,
       unit: ingredient.unit,
       isAvailable
     });
@@ -318,6 +674,7 @@ export const checkSemiProcessedAvailability = async (skuId, quantity) => {
 
   return {
     allAvailable,
+    hasRecipe: true,
     items: availability
   };
 };

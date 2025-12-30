@@ -11,6 +11,7 @@ import kitchenRoutes from './routes/kitchen.js';
 import stallRoutes from './routes/stall.js';
 import alertRoutes from './routes/alerts.js';
 import logsRoutes from './routes/logsRoutes.js';
+import printRoutes from './routes/print.js';
 
 dotenv.config();
 
@@ -32,6 +33,7 @@ app.use('/api/kitchen', kitchenRoutes);
 app.use('/api/stall', stallRoutes);
 app.use('/api/alerts', alertRoutes);
 app.use('/api/logs', logsRoutes);
+app.use('/api/print', printRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
